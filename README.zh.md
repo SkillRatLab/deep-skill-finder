@@ -125,3 +125,126 @@ Agent 会自动完成下载、解压和启用。
 ```
 
 DSF 会返回带有推荐理由的 TOP 5 排名。确认序号后，安装将自动完成。
+
+---
+
+## 架构
+
+```
+用户用自然语言描述任务
+            │
+            ▼
+         意图理解
+    （改写 → 语义查询）
+            │
+            ▼
+         多渠道召回
+  ┌─────────┬──────────────┐
+  │ Skill   │   社区测试   │
+  │ 画像    │     帖子     │
+  └────┬────┴──────┬───────┘
+       └─────┬─────┘
+             ▼
+     8 条规则语义排序
+    → 带理由的 TOP 5
+             │
+             ▼
+ 确认序号 → 自动安装 → 运行 → 反馈闭环
+```
+
+安装完成后，整个闭环会自主运行：**识别 → 召回 → 确认 → 执行 → 反馈**。每一次匹配都会让后续结果更加准确。
+
+---
+
+## 项目结构
+
+```
+├── SKILL.md                  # Skill 定义（供 Agent 读取）
+└── scripts/
+    ├── deep_skill_search.py  # 通过 Meyo 检索服务进行语义搜索
+    └── deep_skill_install.py # 下载并在本地安装 Skills
+```
+
+## 脚本参考
+
+通常你不需要直接调用这些脚本，Agent 会代为执行。不过，你也可以独立运行它们：
+
+**搜索：**
+```bash
+python3 scripts/deep_skill_search.py "你的任务描述" [--agent-type openclaw]
+```
+
+**安装 / 卸载 / 列出：**
+```bash
+# 安装
+python3 scripts/deep_skill_install.py <skill-name> --dir ~/.catpaw/skills
+
+# 卸载
+python3 scripts/deep_skill_install.py <skill-name> --dir ~/.catpaw/skills --uninstall
+
+# 列出已安装的 Skills
+python3 scripts/deep_skill_install.py --dir ~/.catpaw/skills --list
+```
+
+---
+
+## 常见问题
+
+**问：下载量和 Star 数难道不是足够好的指标吗？**
+答：下载量和 Star 数只能说明什么更*流行*，不能说明什么能在*你的具体任务*上正常运行。DSF 根据能力匹配度和真实社区运行记录进行排序。排序规则第 8 条明确规定：下载量只能用于打破平局，绝不能作为主要信号。
+
+**问：“一个安装其他 Skills 的 Skill”——这算递归吗？安全吗？**
+答：不算。DSF 只负责*推荐* Skills。在你的设备上执行任何安装前，都必须获得你的明确确认。每个推荐给你的 Skill 都会先通过安全审计和质量检查。
+
+**问：如果我已经在使用 SkillHub / ClawHub / Vercel find-skills 呢？**
+答：DSF 可以与它们协同使用，并不冲突。它会从所有主流 Skill 来源进行多渠道召回，包括 SkillHub、ClawHub、GitHub 和社区测试帖。安装 DSF，用一个任务试试效果，再决定是否继续使用。
+
+**问：我需要注册账号吗？**
+答：不需要。DSF 可以独立运行，无需注册或提供邮箱。除用于跨会话保持状态的匿名本地 UUID 外，不收集任何遥测数据。
+
+**问：它支持哪些 Agent？**
+答：支持 40+ Agent 运行环境，包括 Claude Code、Codex、OpenClaw、Cursor、Windsurf、Cline、WorkBuddy、Hermes、CatDesk、Copilot 等。
+
+---
+
+## 参与贡献
+
+欢迎提交 Issue 和 Pull Request。
+
+### 如果你是用户
+- 如果某个 Skill 的排名过高或过低，其底层信号来自 [Meyo Community](https://www.meyo.life/community/home)。在那里留下真实运行记录，是改善未来排序结果最直接的方式。
+- 通过 [Issues](https://github.com/wheelry/deep-skill-finder/issues) 报告问题，或申请覆盖特定任务/领域。
+
+### 如果你是 Skill 创作者
+- 我们索引全网 Skills，致力于构建最全面的 Skill 发现层。如果你的 Skill 没有出现在 DSF 的结果中，请[提交 Issue](https://github.com/wheelry/deep-skill-finder/issues) 并附上 Skill URL，我们会进行排查。
+- 有兴趣合作发布一篇“为什么我把自己的 Skill 放到 DSF 上”的文章？欢迎通过 Issues 联系我们。
+
+---
+
+## Star 历史
+
+[![Star History Chart](https://api.star-history.com/svg?repos=wheelry/deep-skill-finder&type=Date)](https://star-history.com/#wheelry/deep-skill-finder&Date)
+
+---
+
+## 觉得有帮助？
+
+- ⭐ **[给本仓库点个 Star](../../stargazers)** —— 帮助更多 Agent 用户发现 DSF
+- 💬 **[发起讨论](../../discussions)** —— 分享你的使用场景或提出问题
+- 🐛 **[报告问题](../../issues)** —— 如果推荐结果看起来不准确，请告诉我们
+- 📖 **[立即体验 DSF](#-在你的-agent-中安装30-秒)** —— 只需 30 秒即可安装
+
+---
+
+## 许可证
+
+本项目采用 MIT 许可证，可在保留署名的前提下自由使用、修改和分发。详情请参阅 [LICENSE](LICENSE)。
+
+---
+
+## 相关链接
+
+- **产品主页：** https://www.meyo.life/skill
+- **社区：** https://www.meyo.life/community/skills
+- **SkillHub 页面：** https://skillhub.cn/skills/deep-skill-finder
+- **ClawHub 页面：** https://clawhub.ai/lintong123/skills/deep-skill-finder

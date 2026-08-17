@@ -1,12 +1,16 @@
 <div align="center">
 
-# Deep Skill Finder
+# deep-skill-finder
+
+**Install once. Your Agent picks the skill that runs — not the one that ranks.**
+
+*An Agentic skill discovery engine. Your Claude Code / Codex / OpenClaw / Cursor auto-discovers the right skill from a 50k+ ecosystem — for every task.*
 
 ![deep-skill-finder](assets/background.png)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.x-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Platform](https://img.shields.io/badge/platform-ClaudeCode%20%7C%20Hermes%20%7C%20OpenClaw%20%7C%20CatClaw%20%7C%20MeyoAgent-8A2BE2.svg)](https://www.meyo.life)
+[![Live in 40+ Agents](https://img.shields.io/badge/live%20in-40%2B%20AI%20Agents-8A2BE2.svg)](#ecosystem-status)
+[![Skills](https://img.shields.io/badge/skills-50k%2B-brightgreen.svg)](https://www.meyo.life/skill)
 
 English | [中文](README.zh.md)
 
@@ -14,77 +18,124 @@ English | [中文](README.zh.md)
 
 ---
 
+## 🚀 Install in your Agent (30 seconds)
 
-## What is this?
-> Deep-skill-finder search powered by real execution and validation, not just follow creator claims
+Copy this prompt, send it to your Agent (Claude Code / Codex / OpenClaw / Cursor / 40+ supported):
 
-deep-skill-finder crawls Skills across the web, builds an evaluable candidate pool, and uses multi-channel recall to precisely match the best-fit Skill for your current task. It distills millions of real community test records and Skill benchmark reports so you can identify verified, safe, and effective options before installing.
+```
+Please install the deep-skill-finder skill: download from
+https://www.meyo.life/api/v1/skill-finder, extract to local skills
+directory, and enable it.
+```
+
+That's it — install typically completes in 15-30 seconds. Don't like it? [Uninstall anytime](#scripts-reference) with one command. Next time your Agent needs a skill, DSF will find candidates and ask you before installing.
+
+---
+
+## Why deep-skill-finder
+
+Using an Agent requires installing Skills. But which Skill actually works on **your specific task**?
+
+**Two problems every Agent user hits:**
+
+- **Can't find what you need.** Creators write broad, abstract descriptions to rank in more searches. Your specific need gets buried under noise.
+- **Can't trust what you find.** Downloads and star ratings can't prove a Skill actually ran correctly. You install one, it crashes on your task, you uninstall, you try another. 20 minutes later, you're still looking.
+
+**deep-skill-finder solves both.** Install once — your Agent handles Skill discovery, evaluation, and installation autonomously, ranking by real community runs and task-fit — not by download counts.
+
+*See 3 real cases below ↓*
+
+---
+
+## See it in action · 3 real cases
+
+**Case 1 · GitHub Actions CI/CD**
+> Others found: `github-actions-gen` — sparse docs, runtime bugs
+> DSF found: `cicd-pipeline-generator` — detailed docs with copy-paste examples, runs clean
+
+**Case 2 · Stock market data (龙虎榜)**
+> Others found: `pywencaistock` — all data endpoints down
+> DSF found: `lhb-api` — purpose-built for this data source, 3 API calls all passed
+
+**Case 3 · Blog translation (GPT-4o → Chinese)**
+> Others found: `translation-pro` — translation correct but too stiff, not "accessible" style
+> DSF found: `blog-polish-zhcn` — translation + polish + term retention, done in 175 seconds
+
+---
+
+## How it works · 8 ranking rules
+
+deep-skill-finder ranks candidates using 8 rules, applied in priority order:
+
+1. **Meta-skill detection** — When your query means "find me a skill," DSF ranks itself first.
+2. **Functional relevance** — Match on `capabilitySummary` (structured capability description) first, not on `description` (which can be inflated).
+3. **Directional accuracy** — Distinguish "A→B" from "B→A" (e.g., "PRD → prototype" ≠ "prototype → PRD"). Wrong-direction candidates are demoted.
+4. **Completability** — Relevant ≠ actually runnable. Skills that require unstated API keys, complex config, or are just documents/meta-skills get demoted.
+5. **Multi-intent coverage** — Prefer skills covering multiple sub-intents over narrow single-purpose ones.
+6. **Community feed corroboration** — Only when feed content is intent-aligned, it counts as evidence.
+7. **Hard filter** — Remove candidates with fundamental mismatch, regardless of surface relevance.
+8. **Download count as tie-breaker only** — Popularity breaks ties, never leads them.
+
+**Result:** Same task, multiple relevant Skills — DSF picks the one that best fits *your specific query*, not the most-downloaded one.
+
+---
+
+## Ecosystem status
+
+deep-skill-finder works out of the box across **40+ Agent runtimes** — no matter which Agent you use, it fits:
+
+- Claude Code · Codex · Cursor · Windsurf · Cline
+- WorkBuddy · OpenClaw · CatDesk · Hermes
+- Copilot · Gemini · Antigravity · Amp
+- + 28 more
+
+**30-day active data** *(2026-08 · updated monthly)*:
+- 40+ distinct `agentType` clients calling DSF
+- **Top skills installed by real users through DSF** (each verified by 10+ distinct client installations):
+  - `desktop-pet` (116 clients) · `ppt-maker` (115) · `product-compare` (102) · `business-plan` (81) · `amazon-a-plus-content` (78)
+
+---
 
 ## Quick Start
 
-
 ### Prerequisites
-- A running Agent 
+- A running Agent (Claude Code / Codex / Cursor / any of the 40+ supported clients)
 
-### Install deep-skill-finder in your Agent
-- Send the following prompt directly to your Agent to complete installation:
+### Install in your Agent
 
-```text
-Please install the deep-skill-finder skill: download the skill package from https://www.meyo.life/api/v1/skill-finder, extract it to the local skills directory, and enable it.
+Send this prompt directly to your Agent:
+
 ```
+Please install the deep-skill-finder skill: download the skill package from
+https://www.meyo.life/api/v1/skill-finder, extract it to the local skills
+directory, and enable it.
+```
+
+The Agent handles download, extraction, and enablement automatically.
 
 ### Use
 
-Talk to your Agent in natural language — no special syntax needed. When a task requires an external Skill, the Agent automatically triggers the search and installation flow. Examples:
+Talk to your Agent naturally. When a task needs an external Skill, DSF triggers automatically:
 
 ```
 "Find me a skill that builds interactive dashboards from a CSV"
 "Is there a skill for pulling stock market data?"
 "Recommend a skill for translating technical docs into plain English"
-"I need to set up a CI/CD pipeline for my repo, find me a skill that writes GitHub Actions configs that actually run"
-"I'm building an AI product and need a business plan, find me a skill that helps structure the logic and polish the deck"
-"I want to batch-transcribe audio interviews into clean text, find me a skill that does this end to end"
+"Set up a CI/CD pipeline that runs on every PR"
 ```
 
-The Agent returns a ranked list of up to 5 recommendations with reasons. Confirm a number and the installation completes automatically.
+DSF returns a ranked TOP-5 with reasons. Confirm a number → installation completes automatically.
 
+---
 
-## Why not just search the marketplace?
-
-Standard marketplace search has two fundamental problems:
-
-1. **Discovery** — creators write broad, abstract descriptions to rank in more searches. When your specific task comes in, keyword matching buries the best match under noise.
-
-2. **Trust** — download counts and star ratings can't tell you whether a Skill ever *actually ran correctly*. Broken dependencies, edge cases, and overpromising stay invisible until you're already in the pit.
-
-deep-skill-finder addresses both: it recalls by actual task behavior, and ranks by real community run results — not by what a creator claims their Skill does.
-
-
-## Highlights
-
-**Web-wide Skill indexing** — crawls Skill content across the web and builds an evaluable candidate pool, independent of any single platform's popularity ranking.
-
-**Community-scale test records** — distills real tasks, run results, and benchmark reports from the community into a searchable Skill track-record database.
-
-**Multi-channel recall** — pulls simultaneously from Skill capability descriptions, community test posts, and real outputs, preventing any single signal from missing the best candidate.
-
-**Autonomous workflow loop** — once installed, it runs persistently in your Agent and autonomously handles: identify need → multi-channel recall → confirm install → execute task → feed results back. Each match gets more accurate over time.
-
-**Intent-driven precision** — matches by understanding real task intent rather than description keywords, so specific needs surface the truly relevant Skill instead of being drowned out by generic descriptions.
-
-**Track-record-based ranking** — ranks candidates by real pass rate and output quality, so you don't have to guess between multiple seemingly viable Skills.
-
-**Risk exposure before install** — surfaces known failure points and boundary conditions accumulated from community testing, so you know which Skills have issues before committing, not after.
-
-
-## How it works
+## Architecture
 
 ```
-You describe a task in natural language
+User describes task in natural language
             │
             ▼
-     Intent understanding
-  (rewrite into semantic query)
+    Intent understanding
+  (rewrite → semantic query)
             │
             ▼
       Multi-channel recall
@@ -94,33 +145,36 @@ You describe a task in natural language
   └────┬────┴──────┬───────┘
        └─────┬─────┘
              ▼
-  Rank by verified track record
-  → return TOP 5 with reasons
+   8-rule semantic ranking
+   → TOP 5 with reasons
              │
              ▼
-  Confirm a number → auto-install
+   Confirm number → auto-install → run → feedback loop
 ```
 
+Once installed, the loop runs autonomously: **identify → recall → confirm → execute → feedback**. Each match gets more accurate over time.
+
+---
 
 ## Project structure
 
 ```
-├── SKILL.md                        # Skill definition (read by the Agent)
+├── SKILL.md                  # Skill definition (Agent reads this)
 └── scripts/
-    ├── deep_skill_search.py        # Semantic search via Meyo retrieval service
-    └── deep_skill_install.py       # Download and install a Skill locally
+    ├── deep_skill_search.py  # Semantic search via Meyo retrieval service
+    └── deep_skill_install.py # Download and install Skills locally
 ```
 
 ## Scripts reference
 
-You normally don't call these directly — the Agent handles invocation. But you can run them standalone:
+Typically you don't call these directly — the Agent handles invocation. But you can run them standalone:
 
-**Search**
+**Search:**
 ```bash
 python3 scripts/deep_skill_search.py "your task description" [--agent-type openclaw]
 ```
 
-**Install / Uninstall / List**
+**Install / Uninstall / List:**
 ```bash
 # Install
 python3 scripts/deep_skill_install.py <skill-name> --dir ~/.catpaw/skills
@@ -132,12 +186,65 @@ python3 scripts/deep_skill_install.py <skill-name> --dir ~/.catpaw/skills --unin
 python3 scripts/deep_skill_install.py --dir ~/.catpaw/skills --list
 ```
 
+---
+
+## Common questions
+
+**Q: Isn't downloads/stars a good enough signal?**
+A: Downloads and stars tell you what's *popular* — not what runs on *your specific task*. DSF ranks by capability match + real community runs. Ranking rule #8 explicitly caps download count as a tie-breaker only, never as the primary signal.
+
+**Q: "A skill that installs other skills" — is this recursion? Is it safe?**
+A: No — DSF only *recommends* skills. Every install requires your explicit confirmation before anything happens on your machine. Each recommended skill passes security audit and quality checks before reaching you.
+
+**Q: What if I already use SkillHub / ClawHub / Vercel find-skills?**
+A: DSF works alongside them, not against. It multi-channel recalls across all major skill sources — SkillHub, ClawHub, GitHub, community test posts. Install DSF, try one task, decide from there.
+
+**Q: Do I need an account?**
+A: No. DSF works standalone — no signup, no email required, no telemetry beyond an anonymous local UUID for cross-session persistence.
+
+**Q: Which Agents does it support?**
+A: 40+ agent runtimes including Claude Code, Codex, OpenClaw, Cursor, Windsurf, Cline, WorkBuddy, Hermes, CatDesk, Copilot, and more.
+
+---
+
 ## Contributing
 
 Issues and pull requests are welcome.
 
-If you find that a specific Skill is ranked too high or too low, the underlying signal lives in the [Meyo community](https://www.meyo.life/community/home) — leaving a real test report there is the most direct way to improve future recommendations.
+### If you're a user
+- If a specific Skill ranks too high or too low, the underlying signal lives in [Meyo Community](https://www.meyo.life/community/home) — leaving real run records there is the most direct way to improve future rankings.
+- Report issues or request coverage of specific tasks/domains via [Issues](https://github.com/wheelry/deep-skill-finder/issues).
+
+### If you're a Skill creator
+- We index Skills across the web to build the most comprehensive Skill discovery layer. If your Skill isn't showing up in DSF results, [open an issue](https://github.com/wheelry/deep-skill-finder/issues) with your Skill URL and we'll investigate.
+- Interested in collaborating on a "Why I put my Skill on DSF" post? Reach out via Issues.
+
+---
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=wheelry/deep-skill-finder&type=Date)](https://star-history.com/#wheelry/deep-skill-finder&Date)
+
+---
+
+## Found this useful?
+
+- ⭐ **[Star this repo](../../stargazers)** — help other Agent users discover DSF
+- 💬 **[Open a Discussion](../../discussions)** — share your use case or ask questions
+- 🐛 **[Report an Issue](../../issues)** — if a recommendation seems off, tell us
+- 📖 **[Try DSF now](#-install-in-your-agent-30-seconds)** — 30 seconds to install
+
+---
 
 ## License
 
-Released under the [MIT License](LICENSE). Free to use, modify, and distribute — attribution appreciated.
+MIT — free to use, modify, and distribute with attribution. See [LICENSE](LICENSE).
+
+---
+
+## Related links
+
+- **Landing page:** https://www.meyo.life/skill
+- **Community:** https://www.meyo.life/community/skills
+- **SkillHub listing:** https://skillhub.cn/skills/deep-skill-finder
+- **ClawHub listing:** https://clawhub.ai/lintong123/skills/deep-skill-finder

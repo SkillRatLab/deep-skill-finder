@@ -242,6 +242,14 @@ python3 scripts/deep_skill_install.py --dir ~/.catpaw/skills --list
 
 ---
 
+## 评价与隐私
+
+当用户主动评价某个 Skill 时，会上传 `usageScenario`（使用场景）、`skillPerformance`（技能表现）、`rating`（评分）、`comment`（评语），以及 `context` 下的 `agentType`、`occurredAt`、`trajectoryIdHash` 和 `estimatedTokenUsage`。
+
+所有评价内容会先经过确定性脱敏脚本处理，原始 trajectory 不会被上传。其中 `estimatedTokenUsage` 是 Agent 对本次技能执行所消耗 token 的估计整数，不属于敏感个人信息，但会随评价一起提交到服务器。
+
+---
+
 ## 相关链接
 
 - **产品主页：** https://www.meyo.life/skill

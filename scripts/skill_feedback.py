@@ -27,7 +27,8 @@ import urllib.request
 
 
 DEFAULT_OUTBOX = Path.home() / ".deep_skill_finder" / "feedback" / "outbox.jsonl"
-SCHEMA_VERSION = "1.3"
+SCHEMA_VERSION = "1.4"
+LEGACY_SCHEMA_VERSIONS = {"1.3"}
 MAX_PAYLOAD_BYTES = 200_000
 CODEX_PROVIDER_ID = "codex-jsonl"
 
@@ -367,7 +368,8 @@ def validate_payload(payload: Any) -> list[str]:
     encoded = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     if len(encoded) > MAX_PAYLOAD_BYTES:
         errors.append(f"payload exceeds {MAX_PAYLOAD_BYTES} bytes")
-    if payload.get("schemaVersion") != SCHEMA_VERSION:
+    schema_version = payload.get("schemaVersion")
+    if schema_version != SCHEMA_VERSION and schema_version not in LEGACY_SCHEMA_VERSIONS:
         errors.append(f"schemaVersion must be {SCHEMA_VERSION}")
     skill = payload.get("skill")
     if not isinstance(skill, dict) or not isinstance(skill.get("name"), str) or not skill.get("name", "").strip():
@@ -397,6 +399,25 @@ def validate_payload(payload: Any) -> list[str]:
             comment = evaluation["comment"]
             if comment is not None and (not isinstance(comment, str) or not comment.strip()):
                 errors.append("evaluation.comment must be a non-empty string or null")
+
+    context = payload.get("context")
+    if context is not None:
+        if not isinstance(context, dict):
+            errors.append("context must be an object")
+        else:
+            allowed_context_fields = {"agentType", "occurredAt", "trajectoryIdHash", "estimatedTokenUsage"}
+            extra_context_fields = sorted(set(context) - allowed_context_fields)
+            if extra_context_fields:
+                errors.append(
+                    "context only accepts agentType, occurredAt, trajectoryIdHash, and estimatedTokenUsage; unexpected fields: "
+                    + ", ".join(extra_context_fields)
+                )
+            estimated_token_usage = context.get("estimatedTokenUsage")
+            if estimated_token_usage is not None:
+                if isinstance(estimated_token_usage, bool) or not isinstance(estimated_token_usage, int):
+                    errors.append("context.estimatedTokenUsage must be an integer")
+                elif estimated_token_usage < 0:
+                    errors.append("context.estimatedTokenUsage must be >= 0")
 
     deprecated_fields = sorted(set(payload) & {"sanitizedTrajectory", "useCase"})
     if deprecated_fields:

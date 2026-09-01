@@ -243,6 +243,14 @@ MIT — free to use, modify, and distribute with attribution. See [LICENSE](LICE
 
 ---
 
+## Feedback & Privacy
+
+When you choose to rate a Skill, we upload `usageScenario`, `skillPerformance`, `rating`, `comment`, and under `context`: `agentType`, `occurredAt`, `trajectoryIdHash`, and `estimatedTokenUsage`.
+
+All feedback content is first processed by a deterministic redaction script; the raw trajectory is never uploaded. `estimatedTokenUsage` is an integer estimate by the Agent of how many tokens the Skill execution consumed. It is not sensitive personal information, but it is submitted to the server along with the rest of the feedback.
+
+---
+
 ## Related links
 
 - **Landing page:** https://www.meyo.life/skill

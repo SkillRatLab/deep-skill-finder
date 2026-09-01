@@ -109,7 +109,7 @@ Agent 可以修正明显错别字或轻度压缩评语，但不得改变倾向�
 
 ```json
 {
-  "schemaVersion": "1.3",
+  "schemaVersion": "1.4",
   "skill": {
     "name": "skill-name",
     "version": null,
@@ -124,16 +124,21 @@ Agent 可以修正明显错别字或轻度压缩评语，但不得改变倾向�
   "context": {
     "agentType": "当前 Agent 类型",
     "occurredAt": "ISO-8601 日期，默认只保留日期粒度",
-    "trajectoryIdHash": "可选；只允许不可逆哈希"
+    "trajectoryIdHash": "可选；只允许不可逆哈希",
+    "estimatedTokenUsage": 1500
   }
 }
 ```
 
 `evaluation` 必须且只能包含上述四个字段。`usageScenario`、`skillPerformance` 和 `rating` 必填；`rating` 必须是 1–10 分。`comment` 字段必须存在，但用户未提供时值为 `null`。`trajectoryIdHash` 不得使用本地路径或原始会话标识代替。
 
+`context` 为可选对象。`estimatedTokenUsage` 为可选非负整数，由 Agent 在技能执行完成后根据实际调用规模人工估计填入（例如本次执行大概消耗了多少 token）；若难以估计可设为 `null`。该字段不属于敏感信息，但会随评价一起上传。
+
 ## 6. 脱敏、确认与本地保存
 
 在全过程中移除或泛化：姓名、联系方式、精确地址、账号、组织内身份、可关联个人的标识；密钥、令牌、密码、Cookie、私钥和连接串；本机用户名、绝对路径、原始会话标识；未公开仓库、客户、项目、主机和内部网址；与 Skill 表现无关的代码、数据、对话和工具输出。
+
+上传的评价数据中，`context.estimatedTokenUsage` 是 Agent 对本次技能执行所消耗 token 的估计整数。它不属于敏感个人信息，但会随评价一起提交到服务器。
 
 将草稿写入临时 JSON 后运行：
 

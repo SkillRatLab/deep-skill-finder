@@ -94,7 +94,7 @@ class SkillFeedbackTests(unittest.TestCase):
 
     def test_redaction_and_validation_accept_normalized_draft(self):
         draft = {
-            "schemaVersion": "1.3",
+            "schemaVersion": "1.4",
             "skill": {"name": "demo-skill"},
             "evaluation": {
                 "usageScenario": "read /Users/alice/private.txt",
@@ -113,7 +113,7 @@ class SkillFeedbackTests(unittest.TestCase):
 
     def test_validation_requires_exact_four_evaluation_fields(self):
         draft = {
-            "schemaVersion": "1.3",
+            "schemaVersion": "1.4",
             "skill": {"name": "demo-skill"},
             "evaluation": {
                 "usageScenario": "demo task",
@@ -149,7 +149,7 @@ class SkillFeedbackTests(unittest.TestCase):
 
     def test_validation_accepts_ten_point_rating_and_optional_comment(self):
         draft = {
-            "schemaVersion": "1.3",
+            "schemaVersion": "1.4",
             "skill": {"name": "demo-skill"},
             "evaluation": {
                 "usageScenario": "demo task",
@@ -167,6 +167,161 @@ class SkillFeedbackTests(unittest.TestCase):
             skill_feedback.validate_payload(draft),
         )
 
+    def test_validation_accepts_estimated_token_usage(self):
+        draft = {
+            "schemaVersion": "1.4",
+            "skill": {"name": "demo-skill"},
+            "evaluation": {
+                "usageScenario": "demo task",
+                "skillPerformance": "provided a workflow",
+                "rating": 8,
+                "comment": None,
+            },
+            "context": {"estimatedTokenUsage": 1500},
+        }
+
+        self.assertEqual([], skill_feedback.validate_payload(draft))
+
+    def test_validation_accepts_missing_estimated_token_usage(self):
+        draft = {
+            "schemaVersion": "1.4",
+            "skill": {"name": "demo-skill"},
+            "evaluation": {
+                "usageScenario": "demo task",
+                "skillPerformance": "provided a workflow",
+                "rating": 8,
+                "comment": None,
+            },
+            "context": {"agentType": "openclaw"},
+        }
+
+        self.assertEqual([], skill_feedback.validate_payload(draft))
+
+        draft["context"]["estimatedTokenUsage"] = None
+        self.assertEqual([], skill_feedback.validate_payload(draft))
+
+    def test_validation_rejects_non_integer_estimated_token_usage(self):
+        draft = {
+            "schemaVersion": "1.4",
+            "skill": {"name": "demo-skill"},
+            "evaluation": {
+                "usageScenario": "demo task",
+                "skillPerformance": "provided a workflow",
+                "rating": 8,
+                "comment": None,
+            },
+            "context": {"estimatedTokenUsage": "1500"},
+        }
+
+        for invalid_value in ("1500", 1500.0, True):
+            draft["context"]["estimatedTokenUsage"] = invalid_value
+            errors = skill_feedback.validate_payload(draft)
+            self.assertIn("context.estimatedTokenUsage must be an integer", errors)
+
+    def test_validation_rejects_negative_estimated_token_usage(self):
+        draft = {
+            "schemaVersion": "1.4",
+            "skill": {"name": "demo-skill"},
+            "evaluation": {
+                "usageScenario": "demo task",
+                "skillPerformance": "provided a workflow",
+                "rating": 8,
+                "comment": None,
+            },
+            "context": {"estimatedTokenUsage": -1},
+        }
+
+        self.assertIn(
+            "context.estimatedTokenUsage must be >= 0",
+            skill_feedback.validate_payload(draft),
+        )
+
+    def test_validation_rejects_unknown_context_fields(self):
+        draft = {
+            "schemaVersion": "1.4",
+            "skill": {"name": "demo-skill"},
+            "evaluation": {
+                "usageScenario": "demo task",
+                "skillPerformance": "provided a workflow",
+                "rating": 8,
+                "comment": None,
+            },
+            "context": {"extraField": "not allowed"},
+        }
+
+        errors = skill_feedback.validate_payload(draft)
+        self.assertTrue(
+            any(
+                "context only accepts agentType, occurredAt, trajectoryIdHash, and estimatedTokenUsage" in error
+                for error in errors
+            )
+        )
+
+    def test_validation_rejects_non_object_context(self):
+        draft = {
+            "schemaVersion": "1.4",
+            "skill": {"name": "demo-skill"},
+            "evaluation": {
+                "usageScenario": "demo task",
+                "skillPerformance": "provided a workflow",
+                "rating": 8,
+                "comment": None,
+            },
+            "context": "not an object",
+        }
+
+        self.assertIn("context must be an object", skill_feedback.validate_payload(draft))
+
+    def test_validation_accepts_legacy_schema_version_without_new_field(self):
+        draft = {
+            "schemaVersion": "1.3",
+            "skill": {"name": "demo-skill"},
+            "evaluation": {
+                "usageScenario": "demo task",
+                "skillPerformance": "provided a workflow",
+                "rating": 8,
+                "comment": None,
+            },
+            "context": {"agentType": "openclaw"},
+        }
+
+        self.assertEqual([], skill_feedback.validate_payload(draft))
+
+    def test_submit_generates_schema_version_1_4(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            draft_path = Path(temp_dir) / "draft.json"
+            outbox_path = Path(temp_dir) / "outbox.jsonl"
+            draft_path.write_text(
+                json.dumps(
+                    {
+                        "schemaVersion": "1.4",
+                        "skill": {"name": "demo-skill"},
+                        "evaluation": {
+                            "usageScenario": "demo task",
+                            "skillPerformance": "provided a workflow",
+                            "rating": 8,
+                            "comment": None,
+                        },
+                        "context": {"estimatedTokenUsage": 1200},
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            args = argparse.Namespace(
+                confirmed=True,
+                input=str(draft_path),
+                outbox=str(outbox_path),
+            )
+
+            with contextlib.redirect_stdout(io.StringIO()):
+                exit_code = skill_feedback._command_submit(args)
+
+            self.assertEqual(0, exit_code)
+            record = json.loads(outbox_path.read_text(encoding="utf-8"))
+            self.assertEqual("1.4", record["payload"]["schemaVersion"])
+            self.assertEqual(1200, record["payload"]["context"]["estimatedTokenUsage"])
+
     def test_submit_refuses_without_review_assertion(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             draft_path = Path(temp_dir) / "draft.json"
@@ -174,7 +329,7 @@ class SkillFeedbackTests(unittest.TestCase):
             draft_path.write_text(
                 json.dumps(
                     {
-                        "schemaVersion": "1.3",
+                        "schemaVersion": "1.4",
                         "skill": {"name": "demo-skill"},
                         "evaluation": {
                             "usageScenario": "demo task",
@@ -205,7 +360,7 @@ class SkillFeedbackTests(unittest.TestCase):
             draft_path.write_text(
                 json.dumps(
                     {
-                        "schemaVersion": "1.3",
+                        "schemaVersion": "1.4",
                         "skill": {"name": "demo-skill"},
                         "evaluation": {
                             "usageScenario": "demo task",
@@ -234,7 +389,7 @@ class SkillFeedbackTests(unittest.TestCase):
 
     def _make_valid_payload(self) -> dict:
         return {
-            "schemaVersion": "1.3",
+            "schemaVersion": "1.4",
             "skill": {"name": "demo-skill"},
             "evaluation": {
                 "usageScenario": "demo task",
@@ -347,7 +502,7 @@ class SkillFeedbackTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             payload = self._make_valid_payload()
             record = {
-                "schemaVersion": "1.3",
+                "schemaVersion": "1.4",
                 "feedbackId": "test-id-123",
                 "savedAt": "2026-01-01T00:00:00Z",
                 "transport": "local-outbox",
@@ -388,12 +543,12 @@ class SkillFeedbackTests(unittest.TestCase):
     def test_upload_validates_outbox_record_payload(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             record = {
-                "schemaVersion": "1.3",
+                "schemaVersion": "1.4",
                 "feedbackId": "test-id-456",
                 "savedAt": "2026-01-01T00:00:00Z",
                 "consent": {"confirmed": True, "confirmedAt": "2026-01-01T00:00:00Z"},
                 "payload": {
-                    "schemaVersion": "1.3",
+                    "schemaVersion": "1.4",
                     "skill": {},
                     "evaluation": {
                         "usageScenario": "demo",
@@ -452,7 +607,7 @@ class SkillFeedbackTests(unittest.TestCase):
             payload = self._make_valid_payload()
             payload["evaluation"]["comment"] = "contact me@example.com"
             record = {
-                "schemaVersion": "1.3",
+                "schemaVersion": "1.4",
                 "feedbackId": "test-id-789",
                 "savedAt": "2026-01-01T00:00:00Z",
                 "consent": {"confirmed": True, "confirmedAt": "2026-01-01T00:00:00Z"},

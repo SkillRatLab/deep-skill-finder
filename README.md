@@ -63,20 +63,21 @@ Using an Agent requires installing Skills. But which Skill actually works on **y
 
 ---
 
-## How it works · 8 ranking rules
+## How it works 
+> 8 layers of ranking intelligence and Final intelligence synthesis
 
-deep-skill-finder ranks candidates using 8 rules, applied in priority order:
+deep-skill-finder goes beyond keyword matching. It evaluates every candidate through eight layers of judgment, prioritizing real capability and task fit over surface-level similarity.
 
-1. **Meta-skill detection** — When your query means "find me a skill," DSF ranks itself first.
-2. **Functional relevance** — Match on `capabilitySummary` (structured capability description) first, not on `description` (which can be inflated).
-3. **Directional accuracy** — Distinguish "A→B" from "B→A" (e.g., "PRD → prototype" ≠ "prototype → PRD"). Wrong-direction candidates are demoted.
-4. **Completability** — Relevant ≠ actually runnable. Skills that require unstated API keys, complex config, or are just documents/meta-skills get demoted.
-5. **Multi-intent coverage** — Prefer skills covering multiple sub-intents over narrow single-purpose ones.
-6. **Community feed corroboration** — Only when feed content is intent-aligned, it counts as evidence.
-7. **Hard filter** — Remove candidates with fundamental mismatch, regardless of surface relevance.
-8. **Download count as tie-breaker only** — Popularity breaks ties, never leads them.
-
-**Result:** Same task, multiple relevant Skills — DSF picks the one that best fits *your specific query*, not the most-downloaded one.
+1. **Meta-intent awareness** — When you are looking for a skill-discovery tool itself, deep-skill-finder recognizes that intent and puts the right meta-skill first.
+2. **Capability-first matching** — Structured capability data takes priority over promotional descriptions, so rankings reflect what a skill can actually do.
+3. **Intent-direction reasoning** — It understands that “A → B” is not the same as “B → A,” preventing reversed workflows from ranking highly.
+4. **Execution readiness** — Relevant but impractical skills are demoted when they depend on hidden credentials, complex setup, or non-executable documentation.
+5. **Multi-intent coverage** — For complex requests, skills that cover more of the end-to-end workflow rank above narrow, single-step tools.
+6. **Community corroboration** — Community posts count only when they provide evidence aligned with the user’s actual intent.
+7. **Contradiction filtering** — Fundamentally mismatched candidates are removed, even when they share similar keywords.
+8. **Popularity in its proper place** — Download count helps break close ties, but never outweighs capability, direction, or task fit.
+ 
+**Final intelligence synthesis** — A reasoning-driven reranker synthesizes every signal into a holistic final judgment, delivering up to five high-confidence recommendations with clear, decision-ready rationales.
 
 ---
 

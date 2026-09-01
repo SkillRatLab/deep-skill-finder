@@ -230,6 +230,251 @@ class SkillFeedbackTests(unittest.TestCase):
             record = json.loads(outbox_path.read_text(encoding="utf-8"))
             self.assertEqual("demo task", record["payload"]["evaluation"]["usageScenario"])
 
+    # ---- upload 命令测试 ----
+
+    def _make_valid_payload(self) -> dict:
+        return {
+            "schemaVersion": "1.3",
+            "skill": {"name": "demo-skill"},
+            "evaluation": {
+                "usageScenario": "demo task",
+                "skillPerformance": "provided a workflow",
+                "rating": 8,
+                "comment": "useful",
+            },
+        }
+
+    def test_upload_refuses_without_confirmed(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            draft_path = Path(temp_dir) / "draft.json"
+            draft_path.write_text(
+                json.dumps(self._make_valid_payload(), ensure_ascii=False),
+                encoding="utf-8",
+            )
+            args = argparse.Namespace(
+                confirmed=False,
+                input=str(draft_path),
+                outbox=None,
+            )
+
+            with contextlib.redirect_stderr(io.StringIO()):
+                exit_code = skill_feedback._command_upload(args)
+
+            self.assertEqual(2, exit_code)
+
+    def test_upload_refuses_sensitive_content(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            draft = self._make_valid_payload()
+            draft["evaluation"]["comment"] = "contact me@example.com"
+            draft_path = Path(temp_dir) / "draft.json"
+            draft_path.write_text(
+                json.dumps(draft, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            args = argparse.Namespace(
+                confirmed=True,
+                input=str(draft_path),
+                outbox=None,
+            )
+
+            with contextlib.redirect_stderr(io.StringIO()):
+                exit_code = skill_feedback._command_upload(args)
+
+            self.assertEqual(3, exit_code)
+
+    def test_upload_success_sends_post_and_returns_zero(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            draft_path = Path(temp_dir) / "draft.json"
+            draft_path.write_text(
+                json.dumps(self._make_valid_payload(), ensure_ascii=False),
+                encoding="utf-8",
+            )
+
+            fake_resp = mock.MagicMock()
+            fake_resp.status = 200
+            fake_resp.read.return_value = json.dumps({"ok": True}).encode()
+            fake_resp.__enter__ = mock.MagicMock(return_value=fake_resp)
+            fake_resp.__exit__ = mock.MagicMock(return_value=False)
+
+            with mock.patch.object(
+                skill_feedback.urllib.request,
+                "urlopen",
+                return_value=fake_resp,
+            ) as mock_urlopen, contextlib.redirect_stdout(io.StringIO()):
+                args = argparse.Namespace(
+                    confirmed=True,
+                    input=str(draft_path),
+                    outbox=None,
+                )
+                exit_code = skill_feedback._command_upload(args)
+
+            self.assertEqual(0, exit_code)
+            mock_urlopen.assert_called_once()
+            req = mock_urlopen.call_args[0][0]
+            self.assertEqual("POST", req.method)
+            content_type = req.headers.get("Content-type") or req.headers.get("Content-Type")
+            self.assertIsNotNone(content_type)
+            self.assertIn("application/json", content_type)
+
+    def test_upload_failure_saves_to_outbox_and_returns_one(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            draft_path = Path(temp_dir) / "draft.json"
+            outbox_path = Path(temp_dir) / "outbox.jsonl"
+            draft_path.write_text(
+                json.dumps(self._make_valid_payload(), ensure_ascii=False),
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(
+                skill_feedback.urllib.request,
+                "urlopen",
+                side_effect=skill_feedback.urllib.error.URLError("connection refused"),
+            ), contextlib.redirect_stdout(io.StringIO()):
+                args = argparse.Namespace(
+                    confirmed=True,
+                    input=str(draft_path),
+                    outbox=str(outbox_path),
+                )
+                exit_code = skill_feedback._command_upload(args)
+
+            self.assertEqual(1, exit_code)
+            self.assertTrue(outbox_path.exists())
+            record = json.loads(outbox_path.read_text(encoding="utf-8"))
+            self.assertFalse(record["uploadAttempts"][0]["success"])
+            self.assertEqual("local-outbox", record["transport"])
+
+    def test_upload_accepts_outbox_record_format(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            payload = self._make_valid_payload()
+            record = {
+                "schemaVersion": "1.3",
+                "feedbackId": "test-id-123",
+                "savedAt": "2026-01-01T00:00:00Z",
+                "transport": "local-outbox",
+                "consent": {"confirmed": True, "confirmedAt": "2026-01-01T00:00:00Z"},
+                "uploadAttempts": [],
+                "payload": payload,
+            }
+            draft_path = Path(temp_dir) / "record.json"
+            draft_path.write_text(
+                json.dumps(record, ensure_ascii=False),
+                encoding="utf-8",
+            )
+
+            fake_resp = mock.MagicMock()
+            fake_resp.status = 200
+            fake_resp.read.return_value = json.dumps({"ok": True}).encode()
+            fake_resp.__enter__ = mock.MagicMock(return_value=fake_resp)
+            fake_resp.__exit__ = mock.MagicMock(return_value=False)
+
+            with mock.patch.object(
+                skill_feedback.urllib.request,
+                "urlopen",
+                return_value=fake_resp,
+            ) as mock_urlopen, contextlib.redirect_stdout(io.StringIO()):
+                args = argparse.Namespace(
+                    confirmed=True,
+                    input=str(draft_path),
+                    outbox=None,
+                )
+                exit_code = skill_feedback._command_upload(args)
+                self.assertEqual(0, exit_code)
+                # Verify the request was sent with correct payload
+                req = mock_urlopen.call_args[0][0]
+                sent_body = json.loads(req.data)
+                self.assertEqual("test-id-123", sent_body["feedbackId"])
+                self.assertEqual("demo task", sent_body["evaluation"]["usageScenario"])
+
+    def test_upload_validates_outbox_record_payload(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            record = {
+                "schemaVersion": "1.3",
+                "feedbackId": "test-id-456",
+                "savedAt": "2026-01-01T00:00:00Z",
+                "consent": {"confirmed": True, "confirmedAt": "2026-01-01T00:00:00Z"},
+                "payload": {
+                    "schemaVersion": "1.3",
+                    "skill": {},
+                    "evaluation": {
+                        "usageScenario": "demo",
+                        "skillPerformance": "ok",
+                        "rating": 8,
+                        "comment": None,
+                    },
+                },
+            }
+            draft_path = Path(temp_dir) / "record.json"
+            draft_path.write_text(
+                json.dumps(record, ensure_ascii=False),
+                encoding="utf-8",
+            )
+
+            with contextlib.redirect_stderr(io.StringIO()):
+                args = argparse.Namespace(
+                    confirmed=True,
+                    input=str(draft_path),
+                    outbox=None,
+                )
+                exit_code = skill_feedback._command_upload(args)
+
+            self.assertEqual(2, exit_code)
+
+    def test_upload_handles_non_json_response(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            draft_path = Path(temp_dir) / "draft.json"
+            draft_path.write_text(
+                json.dumps(self._make_valid_payload(), ensure_ascii=False),
+                encoding="utf-8",
+            )
+
+            fake_resp = mock.MagicMock()
+            fake_resp.status = 200
+            fake_resp.read.return_value = b"<html>Not JSON</html>"
+            fake_resp.__enter__ = mock.MagicMock(return_value=fake_resp)
+            fake_resp.__exit__ = mock.MagicMock(return_value=False)
+
+            with mock.patch.object(
+                skill_feedback.urllib.request,
+                "urlopen",
+                return_value=fake_resp,
+            ), contextlib.redirect_stdout(io.StringIO()):
+                args = argparse.Namespace(
+                    confirmed=True,
+                    input=str(draft_path),
+                    outbox=None,
+                )
+                exit_code = skill_feedback._command_upload(args)
+
+            self.assertEqual(0, exit_code)
+
+    def test_upload_outbox_record_with_sensitive_payload_refuses(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            payload = self._make_valid_payload()
+            payload["evaluation"]["comment"] = "contact me@example.com"
+            record = {
+                "schemaVersion": "1.3",
+                "feedbackId": "test-id-789",
+                "savedAt": "2026-01-01T00:00:00Z",
+                "consent": {"confirmed": True, "confirmedAt": "2026-01-01T00:00:00Z"},
+                "uploadAttempts": [],
+                "payload": payload,
+            }
+            draft_path = Path(temp_dir) / "record.json"
+            draft_path.write_text(
+                json.dumps(record, ensure_ascii=False),
+                encoding="utf-8",
+            )
+
+            with contextlib.redirect_stderr(io.StringIO()):
+                args = argparse.Namespace(
+                    confirmed=True,
+                    input=str(draft_path),
+                    outbox=None,
+                )
+                exit_code = skill_feedback._command_upload(args)
+
+            self.assertEqual(3, exit_code)
+
 
 if __name__ == "__main__":
     unittest.main()

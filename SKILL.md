@@ -154,7 +154,7 @@ metadata:
 |------|------|
 | `deep_skill_search.py` | 根据用户任务检索skill |
 | `deep_skill_install.py` | 下载安装 skill |
-| `skill_feedback.py` | 探测已知 trajectory Provider、解析 Codex 快速路径、校验脱敏统一草稿、将确认内容写入本地 outbox |
+| `skill_feedback.py` | 探测已知 trajectory Provider、解析 Codex 快速路径、校验脱敏统一草稿、将确认内容写入本地 outbox 或上传到远程服务器 |
 
 ## Agent 类型识别（agent_type）
 

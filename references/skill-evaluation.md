@@ -156,4 +156,25 @@ python3 {skill_dir}/scripts/skill_feedback.py submit \
   --confirmed
 ```
 
-默认追加到 `~/.deep_skill_finder/feedback/outbox.jsonl`。脚本当前不发起网络请求。用户修改任何字段后，必须重新脱敏、展示和确认；不得将沉默视为确认。给出评分可以作为未修改分支的提交同意，但不能代替修改分支对修订内容的明确确认。
+默认追加到 `~/.deep_skill_finder/feedback/outbox.jsonl`。用户修改任何字段后，必须重新脱敏、展示和确认；不得将沉默视为确认。给出评分可以作为未修改分支的提交同意，但不能代替修改分支对修订内容的明确确认。
+
+## 7. 上传到服务器
+
+提交到本地 outbox 后，可上传到远程服务器：
+
+```bash
+python3 {skill_dir}/scripts/skill_feedback.py upload \
+  --input <sanitized.json> \
+  --confirmed \
+  [--outbox <path>]
+```
+
+`upload` 命令从 `--input` 读取单条评价记录，上传到远程服务器。与 `submit` 命令对称：`submit` 保存到本地 outbox，`upload` 上传到远程。两者都要求 `--confirmed` 以确保用户已确认评价内容，且都执行完整的校验和确定性脱敏检查——如果脱敏后发现内容有变化（说明含未脱敏的敏感信息），上传将被拒绝（退出码 3）。
+
+输入支持两种格式：
+- **纯评价 payload**（`submit` 前的格式）：自动生成新的 feedbackId
+- **完整 outbox 记录**（含 `payload` 字段）：保留原 feedbackId 和时间戳
+
+无论哪种输入格式，都会对 payload 部分执行统一的结构校验和脱敏检查。
+
+`--outbox` 可选：指定后，无论上传成功或失败，都会额外保存一份到该路径，便于后续追踪。上传失败时记录中会包含失败原因和错误码，可用于重试。

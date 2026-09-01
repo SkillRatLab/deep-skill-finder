@@ -2,9 +2,10 @@
 """Use known trajectory providers and stage approved feedback locally.
 
 Unknown trajectory formats are intentionally interpreted by the current Agent,
-not guessed here. The script has no network transport. ``submit`` appends one
-JSON record to a local outbox only after the caller passes ``--confirmed`` to
-assert that the applicable user-review rule has been satisfied.
+not guessed here. ``submit`` appends one JSON record to a local outbox only
+after the caller passes ``--confirmed`` to assert that the applicable
+user-review rule has been satisfied. ``upload`` sends an approved payload to
+a remote server after the same validation and redaction checks as ``submit``.
 """
 
 from __future__ import annotations
@@ -21,12 +22,19 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable
 from urllib.parse import urlsplit, urlunsplit
+import urllib.error
+import urllib.request
 
 
 DEFAULT_OUTBOX = Path.home() / ".deep_skill_finder" / "feedback" / "outbox.jsonl"
 SCHEMA_VERSION = "1.3"
 MAX_PAYLOAD_BYTES = 200_000
 CODEX_PROVIDER_ID = "codex-jsonl"
+
+# 上传 API 配置（占位符，待后端 API 定义后更新）
+FEEDBACK_API_URL = "https://www.meyo.life/api/v1/skill-feedback"
+FEEDBACK_API_TIMEOUT = 30
+APP_CONFIG_PATH = Path.home() / ".meyo_agent" / "app.config.json"
 
 EXPLICIT_SKILL_RE = re.compile(r"(?<![\w-])\$([A-Za-z0-9][A-Za-z0-9:_-]{0,127})")
 QUOTED_SKILL_PATH_RE = re.compile(r"[\"']([^\"'\r\n]+[/\\]SKILL\.md)[\"']")
@@ -122,6 +130,7 @@ def _matches_codex_agent(agent_type: str | None) -> bool | None:
 
 
 def probe_providers(agent_type: str | None = None) -> list[dict[str, Any]]:
+    # TODO: 目前仅支持codex provider
     """Report deterministic providers that are actually detectable."""
     roots = _codex_trajectory_roots()
     detected_roots = []
@@ -407,6 +416,44 @@ def _read_json_input(path_value: str) -> Any:
         return json.load(handle)
 
 
+def _read_json(path: Path) -> dict:
+    """读取 JSON 文件，失败返回空字典。"""
+    try:
+        if path.exists():
+            with open(path, encoding="utf-8") as f:
+                return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        pass
+    return {}
+
+
+def get_api_token() -> str:
+    """从配置文件或环境变量获取 API Token。"""
+    app_config = _read_json(APP_CONFIG_PATH)
+    settings = app_config.get("settings", {})
+    return settings.get("meyoApiKey") or settings.get("meyoToken") or os.environ.get("MEYO_API_KEY", "")
+
+
+def get_feedback_api_url() -> str:
+    """获取评价上传 API URL。
+
+    优先级：
+    1. 环境变量 MEYO_FEEDBACK_API_URL
+    2. 配置文件中的 feedbackApiUrl
+    3. 默认占位符
+    """
+    env_url = os.environ.get("MEYO_FEEDBACK_API_URL", "").strip()
+    if env_url:
+        return env_url.rstrip("/")
+
+    app_config = _read_json(APP_CONFIG_PATH)
+    configured = app_config.get("settings", {}).get("feedbackApiUrl", "")
+    if configured:
+        return configured.rstrip("/")
+
+    return FEEDBACK_API_URL
+
+
 def _write_private_json(path_value: str, payload: Any) -> None:
     text = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
     if path_value == "-":
@@ -432,6 +479,63 @@ def _append_private_jsonl(path: Path, payload: Any) -> None:
     finally:
         os.close(descriptor)
     os.chmod(path, 0o600)
+
+
+def _upload_feedback(payload: dict) -> dict:
+    """上传评价到远程服务器。
+
+    返回结果包含:
+    - success: bool 是否成功
+    - code: HTTP 状态码或 0
+    - message: 错误信息或成功提示
+    - response: 服务器响应数据（成功时）
+    """
+    api_url = get_feedback_api_url()
+    url = api_url
+    token = get_api_token()
+
+    headers = {
+        "User-Agent": "deep-skill-finder/1.0",
+        "Content-Type": "application/json",
+    }
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+
+    req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+
+    try:
+        with urllib.request.urlopen(req, timeout=FEEDBACK_API_TIMEOUT) as resp:
+            raw = resp.read()
+            try:
+                result = json.loads(raw)
+            except (json.JSONDecodeError, ValueError):
+                result = {"raw": raw.decode("utf-8", errors="replace")[:2000]}
+            return {
+                "success": True,
+                "code": resp.status,
+                "message": "上传成功",
+                "response": result,
+            }
+    except urllib.error.HTTPError as e:
+        return {
+            "success": False,
+            "code": e.code,
+            "message": f"HTTP {e.code}: {e.reason}",
+        }
+    except urllib.error.URLError as e:
+        return {
+            "success": False,
+            "code": 0,
+            "message": f"网络错误: {e.reason}",
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "code": 0,
+            "message": f"上传异常: {e}",
+        }
 
 
 def _command_providers(args: argparse.Namespace) -> int:
@@ -514,12 +618,121 @@ def _command_submit(args: argparse.Namespace) -> int:
         "savedAt": _iso_utc(now),
         "transport": "local-outbox",
         "consent": {"confirmed": True, "confirmedAt": _iso_utc(now)},
+        "uploadAttempts": [],
         "payload": payload,
     }
     outbox = Path(args.outbox).expanduser()
     _append_private_jsonl(outbox, record)
     print(json.dumps({"saved": True, "feedbackId": record["feedbackId"], "outbox": str(outbox)}, ensure_ascii=False))
     return 0
+
+
+def _command_upload(args: argparse.Namespace) -> int:
+    """上传评价到远程服务器。
+
+    从 --input 读取单条记录，上传到服务器。
+    与 submit 命令对称：submit 保存到本地 outbox，upload 上传到远程。
+    同样要求 --confirmed 且执行完整脱敏检查。
+    """
+    if not args.confirmed:
+        print("error: upload requires --confirmed after the applicable user-review rule is satisfied", file=sys.stderr)
+        return 2
+
+    # 读取输入文件
+    try:
+        if args.input == "-":
+            record = json.load(sys.stdin)
+        else:
+            with Path(args.input).expanduser().open(encoding="utf-8") as f:
+                record = json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError, OSError) as e:
+        print(json.dumps({"error": f"无法读取输入文件: {e}"}, ensure_ascii=False), file=sys.stderr)
+        return 2
+
+    # 支持两种格式：完整的 outbox 记录（含 payload 等）或纯评价 payload
+    if isinstance(record, dict) and "payload" in record:
+        # 完整的 outbox 记录格式
+        feedback_id = record.get("feedbackId", str(uuid.uuid4()))
+        payload = record.get("payload", {})
+        submitted_at = record.get("savedAt")
+        consent = record.get("consent", {})
+    else:
+        # 纯评价 payload 格式（直接是 submit 前的格式）
+        feedback_id = str(uuid.uuid4())
+        payload = record
+        submitted_at = _iso_utc(datetime.now(timezone.utc))
+        consent = {"confirmed": True, "confirmedAt": submitted_at}
+
+    # 对所有输入执行统一校验和脱敏检查（无论来源格式）
+    errors = validate_payload(payload)
+    if errors:
+        for error in errors:
+            print(f"error: {error}", file=sys.stderr)
+        return 2
+    sanitized = sanitize_value(payload)
+    if sanitized != payload:
+        print(
+            "error: sensitive-looking content remains; run redact and repeat user review if displayed fields change",
+            file=sys.stderr,
+        )
+        return 3
+
+    # 构建上传 payload（脱敏后的 payload + 元数据）
+    upload_payload = {
+        **payload,
+        "feedbackId": feedback_id,
+        "submittedAt": submitted_at,
+        "consent": consent,
+    }
+
+    # 执行上传
+    result = _upload_feedback(upload_payload)
+
+    now = datetime.now(timezone.utc)
+    output = {
+        "feedbackId": feedback_id,
+        "success": result["success"],
+        "apiUrl": get_feedback_api_url(),
+    }
+
+    if result["success"]:
+        output["message"] = "上传成功"
+        output["response"] = result.get("response")
+        # 如果指定了 outbox，也保存到本地
+        if args.outbox:
+            outbox_record = {
+                "schemaVersion": SCHEMA_VERSION,
+                "feedbackId": feedback_id,
+                "savedAt": submitted_at or _iso_utc(now),
+                "transport": "remote-api",
+                "consent": consent,
+                "uploadAttempts": [{"at": _iso_utc(now), "success": True, "code": result["code"]}],
+                "payload": payload,
+            }
+            outbox_path = Path(args.outbox).expanduser()
+            _append_private_jsonl(outbox_path, outbox_record)
+            output["outbox"] = str(outbox_path)
+    else:
+        output["error"] = result["message"]
+        output["code"] = result["code"]
+        # 如果指定了 outbox，保存失败记录以便重试
+        if args.outbox:
+            outbox_record = {
+                "schemaVersion": SCHEMA_VERSION,
+                "feedbackId": feedback_id,
+                "savedAt": submitted_at or _iso_utc(now),
+                "transport": "local-outbox",
+                "consent": consent,
+                "uploadAttempts": [{"at": _iso_utc(now), "success": False, "code": result["code"], "error": result["message"]}],
+                "payload": payload,
+            }
+            outbox_path = Path(args.outbox).expanduser()
+            _append_private_jsonl(outbox_path, outbox_record)
+            output["outbox"] = str(outbox_path)
+            output["message"] = f"上传失败，已保存到 outbox: {outbox_path}"
+
+    print(json.dumps(output, ensure_ascii=False))
+    return 0 if result["success"] else 1
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -558,6 +771,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Assert that the applicable user-review and consent requirements were satisfied",
     )
     submit.set_defaults(handler=_command_submit)
+
+    upload = subparsers.add_parser("upload", help="Upload feedback from input file to remote server")
+    upload.add_argument("--input", required=True, help="Feedback JSON path, or - for stdin")
+    upload.add_argument("--outbox", help="Optional: also save to local outbox path on success/failure")
+    upload.add_argument(
+        "--confirmed",
+        action="store_true",
+        help="Assert that the applicable user-review and consent requirements were satisfied",
+    )
+    upload.set_defaults(handler=_command_upload)
 
     return parser
 

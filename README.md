@@ -175,6 +175,10 @@ Typically you don't call these directly — the Agent handles invocation. But yo
 python3 scripts/deep_skill_search.py "your task description" [--agent-type openclaw]
 ```
 
+Search failures return a non-zero exit status and a structured `error.code` such as
+`search_timeout`, `search_network_error`, or `search_service_error`. A successful search with
+no matches still exits normally with an empty `community` list.
+
 **Install / Uninstall / List:**
 ```bash
 # Install

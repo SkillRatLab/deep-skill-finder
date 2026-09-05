@@ -174,6 +174,10 @@ DSF 会返回带有推荐理由的 TOP 5 排名。确认序号后，安装将自
 python3 scripts/deep_skill_search.py "你的任务描述" [--agent-type openclaw]
 ```
 
+搜索失败时脚本会返回非零退出码，并输出结构化的 `error.code`，例如
+`search_timeout`、`search_network_error` 或 `search_service_error`。正常完成但没有匹配项时，
+仍以成功状态退出，并返回空的 `community` 列表。
+
 **安装 / 卸载 / 列出：**
 ```bash
 # 安装

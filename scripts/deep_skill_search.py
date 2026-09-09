@@ -8,6 +8,7 @@
 import argparse
 import json
 import os
+import re
 import sys
 import tempfile
 import urllib.error
@@ -160,6 +161,16 @@ def _parse_skill_item(s: dict) -> dict:
     }
 
 
+def get_skill_version() -> str:
+    """从 SKILL.md frontmatter 读取当前版本号。"""
+    skill_md = Path(__file__).resolve().parent.parent / "SKILL.md"
+    if skill_md.exists():
+        m = re.search(r'version:\s*"([^"]+)"', skill_md.read_text(encoding="utf-8"))
+        if m:
+            return m.group(1)
+    return "unknown"
+
+
 def search_deep(content: str, agent_type: str = None) -> tuple:
     """语义深度搜索（如果 API 支持）。
 
@@ -169,6 +180,9 @@ def search_deep(content: str, agent_type: str = None) -> tuple:
     params = {"query": content, "ref": "meyo"}
     if agent_type:
         params["agentType"] = agent_type
+    version = get_skill_version()
+    if version != "unknown":
+        params["skillVersion"] = version
     query_string = urllib.parse.urlencode(params)
     result = api_request(f"/skills/search/deep?{query_string}", extra_headers={"X-Client-Id": get_client_id()}, timeout=60)
 
@@ -205,12 +219,44 @@ def search_deep(content: str, agent_type: str = None) -> tuple:
     return parsed, request_id
 
 
+def check_version():
+    """输出版本检查结果 JSON：{current_version, latest_version, update_available}"""
+    current = get_skill_version()
+    latest = "unknown"
+    try:
+        api_url = "https://api.github.com/repos/SkillRatLab/deep-skill-finder/contents/SKILL.md"
+        req = urllib.request.Request(api_url, headers={"Accept": "application/vnd.github.v3+json", "User-Agent": "deep-skill-finder/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            import base64
+            d = json.loads(resp.read())
+            content = base64.b64decode(d["content"]).decode()
+            m = re.search(r'version:\s*"([^"]+)"', content)
+            if m:
+                latest = m.group(1)
+    except Exception:
+        pass
+
+    def parse_ver(v):
+        try:
+            return tuple(int(x) for x in v.split("."))
+        except Exception:
+            return (0,)
+
+    update = latest != "unknown" and parse_ver(current) < parse_ver(latest)
+    print(json.dumps({"current_version": current, "latest_version": latest, "update_available": update}, ensure_ascii=False))
+
+
 def main():
     parser = argparse.ArgumentParser(description="搜索 Meyo 社区 Skill")
-    parser.add_argument("query", help="搜索关键词或任务描述")
+    parser.add_argument("query", nargs="?", help="搜索关键词或任务描述")
     parser.add_argument("--agent-type", default=None, help="当前 Agent 类型（如 openclaw/hermes/qclaw/catdesk 等，可选）")
     parser.add_argument("--output", help="输出 JSON 到文件（默认 stdout）")
+    parser.add_argument("--check-version", action="store_true", help="检查是否有新版本")
     args = parser.parse_args()
+
+    if args.check_version:
+        check_version()
+        return
 
     if not args.query:
         parser.error("请提供搜索关键词")

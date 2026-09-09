@@ -225,7 +225,11 @@ def check_version():
     latest = "unknown"
     try:
         api_url = "https://api.github.com/repos/SkillRatLab/deep-skill-finder/contents/SKILL.md"
-        req = urllib.request.Request(api_url, headers={"Accept": "application/vnd.github.v3+json", "User-Agent": "deep-skill-finder/1.0"})
+        headers = {"Accept": "application/vnd.github.v3+json", "User-Agent": "deep-skill-finder/1.0"}
+        token = os.environ.get("GITHUB_TOKEN")
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        req = urllib.request.Request(api_url, headers=headers)
         with urllib.request.urlopen(req, timeout=10) as resp:
             import base64
             d = json.loads(resp.read())

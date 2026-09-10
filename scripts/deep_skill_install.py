@@ -10,6 +10,7 @@
 import argparse
 import json
 import os
+import re
 import sys
 import tempfile
 import time
@@ -214,6 +215,9 @@ def download_skill_zip(name: str, version: str = None, request_id: str = None, a
         params["requestId"] = request_id
     if agent_type:
         params["agentType"] = agent_type
+    skill_version = get_skill_version()
+    if skill_version != "unknown":
+        params["skillVersion"] = skill_version
 
     api_url = get_api_url()
     url = f"{api_url}/skills/download/public?{urllib.parse.urlencode(params)}"
@@ -222,6 +226,16 @@ def download_skill_zip(name: str, version: str = None, request_id: str = None, a
     req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req, timeout=60) as resp:
         return resp.read()
+
+
+def get_skill_version() -> str:
+    """从 SKILL.md frontmatter 读取当前版本号。"""
+    skill_md = Path(__file__).resolve().parent.parent / "SKILL.md"
+    if skill_md.exists():
+        m = re.search(r'version:\s*"([^"]+)"', skill_md.read_text(encoding="utf-8"))
+        if m:
+            return m.group(1)
+    return "unknown"
 
 
 def _load_last_search_request_id() -> str:

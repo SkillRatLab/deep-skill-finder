@@ -21,7 +21,7 @@ metadata:
    ```
    若脚本不支持 `--check-version`，改用以下方式直接读取远程 SKILL.md frontmatter：
    ```bash
-   curl -s "https://api.github.com/repos/SkillRatLab/deep-skill-finder/contents/SKILL.md" -H "Accept: application/vnd.github.v3+json" | {python} -c "import sys,json,base64,re; d=json.load(sys.stdin); c=base64.b64decode(d['content']).decode(); m=re.search(r'version:\s*\"([^\"]+)\"', c); print(m.group(1) if m else 'unknown')"
+   curl -s "https://api.github.com/repos/wheelry/deep-skill-finder/contents/SKILL.md" -H "Accept: application/vnd.github.v3+json" | {python} -c "import sys,json,base64,re; d=json.load(sys.stdin); c=base64.b64decode(d['content']).decode(); m=re.search(r'version:\s*\"([^\"]+)\"', c); print(m.group(1) if m else 'unknown')"
    ```
 3. 比较版本：
    - `{current_version}` < 远程最新版本 → 提示用户：

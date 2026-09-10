@@ -224,7 +224,7 @@ def check_version():
     current = get_skill_version()
     latest = "unknown"
     try:
-        api_url = "https://api.github.com/repos/SkillRatLab/deep-skill-finder/contents/SKILL.md"
+        api_url = "https://api.github.com/repos/wheelry/deep-skill-finder/contents/SKILL.md"
         headers = {"Accept": "application/vnd.github.v3+json", "User-Agent": "deep-skill-finder/1.0"}
         token = os.environ.get("GITHUB_TOKEN")
         if token:

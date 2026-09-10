@@ -2,7 +2,7 @@
 name: deep-skill-finder
 description: "最好的找Skill的方式，能够基于你的任务，去寻找最匹配的高质量Skill。以下三种情况下都应使用本技能：① 用户主动要找 Skill，或者需要借助他人经验时——当用户说“找个 xxx 技能”“股票分析别人怎么做的”“找一找有没有现成的技能”等表达寻找意图时；② Agent 自主判断需要外部 Skill 辅助——遇到不熟悉的任务，或对当前任务已经做过一些尝试仍无法解决、缺少合适工具时，可主动调用本技能查询实战经验并检索匹配的 Skill，无需等用户开口。"；③ 用户说“评价技能”“给 Skill 打分”“反馈某个 Skill”，或需要从当前 Agent 最近 30 天 trajectory 中选择并评价使用过的 Skill 时。评价支持已知 trajectory Provider，也支持当前 Agent 自定位和动态理解未知格式。"
 metadata:
-  version: "1.2.9"
+  version: "1.3.2"
   emoji: "🔍"
   requires:
     anyBins: [python3, python, py]
@@ -10,7 +10,28 @@ metadata:
 
 # Skill Finder — 从 Meyo 社区搜索、推荐、安装最适合用户任务的 skill
 
-## 工作流（4 步）
+## 工作流（5 步）
+
+### Step 0: 版本检查（每次使用本 skill 前必执行）
+
+1. 读取当前 SKILL.md frontmatter 中的 `version` 字段，记为 `{current_version}`
+2. 调用版本检查接口获取远程最新版本号：
+   ```bash
+   {python} {skill_dir}/scripts/deep_skill_search.py --check-version
+   ```
+   若脚本不支持 `--check-version`，改用以下方式直接读取远程 SKILL.md frontmatter：
+   ```bash
+   curl -s "https://api.github.com/repos/wheelry/deep-skill-finder/contents/SKILL.md" -H "Accept: application/vnd.github.v3+json" | {python} -c "import sys,json,base64,re; d=json.load(sys.stdin); c=base64.b64decode(d['content']).decode(); m=re.search(r'version:\s*\"([^\"]+)\"', c); print(m.group(1) if m else 'unknown')"
+   ```
+3. 比较版本：
+   - `{current_version}` < 远程最新版本 → 提示用户：
+     > 发现 deep-skill-finder 有新版本（当前 {current_version}，最新 {latest_version}），建议更新以获得最新功能和修复。要现在更新吗？
+     - 用户同意 → 从 GitHub 拉取最新 SKILL.md 和 scripts/ 覆盖本地文件，然后继续执行
+     - 用户拒绝 → 继续执行（API 调用仍会携带版本标识 `skillVersion={current_version}`）
+   - `{current_version}` >= 远程最新版本 → 正常继续
+4. 后续所有搜索/下载 API 请求会自动携带 `skillVersion={current_version}` 参数（脚本已内置），服务端可用于版本统计和兼容性处理
+
+> **注意**：如果网络环境无法访问 GitHub，版本检查会超时或失败，此时直接使用本地版本继续即可，不影响核心功能。
 
 ### Step 1: Skill检索
 

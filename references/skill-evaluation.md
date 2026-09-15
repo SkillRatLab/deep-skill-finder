@@ -134,7 +134,7 @@ Agent 可以修正明显错别字或轻度压缩评语，但不得改变倾向�
 
 `context` 为可选对象。`estimatedTokenUsage` 为可选非负整数，由 Agent 在技能执行完成后根据实际调用规模人工估计填入（例如本次执行大概消耗了多少 token）；若难以估计可设为 `null`。该字段不属于敏感信息，但会随评价一起上传。
 
-## 6. 脱敏、确认与本地保存
+## 6. 脱敏、确认与上传
 
 在全过程中移除或泛化：姓名、联系方式、精确地址、账号、组织内身份、可关联个人的标识；密钥、令牌、密码、Cookie、私钥和连接串；本机用户名、绝对路径、原始会话标识；未公开仓库、客户、项目、主机和内部网址；与 Skill 表现无关的代码、数据、对话和工具输出。
 
@@ -150,10 +150,37 @@ python3 {skill_dir}/scripts/skill_feedback.py redact \
 
 脚本脱敏不能代替 Agent 的逐字段语义检查。运行脱敏后，比较 `sanitized.json` 中的 `usageScenario` 和 `skillPerformance` 与首次展示值：
 
-- 两个字段未被用户修改，且脱敏结果与首次展示一致：直接运行提交命令，不再要求确认。
-- 用户修改了任一字段，或脱敏结果改变了任一首次展示字段：向用户展示 `sanitized.json` 的全部字段并请求一次明确确认，确认后再运行提交命令。
+- 两个字段未被用户修改，且脱敏结果与首次展示一致：直接运行上传命令，不再要求确认。
+- 用户修改了任一字段，或脱敏结果改变了任一首次展示字段：向用户展示 `sanitized.json` 的全部字段并请求一次明确确认，确认后再运行上传命令。
 
-提交命令为：
+用户修改任何字段后，必须重新脱敏、展示和确认；不得将沉默视为确认。给出评分可以作为未修改分支的提交同意，但不能代替修改分支对修订内容的明确确认。
+
+## 7. 上传到服务器（默认提交方式）
+
+评价确认后，**默认上传到远程服务器**，同时保存一份到本地 outbox：
+
+```bash
+python3 {skill_dir}/scripts/skill_feedback.py upload \
+  --input <sanitized.json> \
+  --confirmed \
+  --outbox ~/.deep_skill_finder/feedback/outbox.jsonl
+```
+
+`upload` 命令从 `--input` 读取单条评价记录，上传到远程服务器。该命令要求 `--confirmed` 以确保用户已确认评价内容，且执行完整的校验和确定性脱敏检查——如果脱敏后发现内容有变化（说明含未脱敏的敏感信息），上传将被拒绝（退出码 3）。
+
+输入支持两种格式：
+- **纯评价 payload**（`redact` 后的格式）：自动生成新的 feedbackId
+- **完整 outbox 记录**（含 `payload` 字段）：保留原 feedbackId 和时间戳
+
+无论哪种输入格式，都会对 payload 部分执行统一的结构校验和脱敏检查。
+
+`--outbox` 确保无论上传成功或失败，都会保存一份到本地：
+- **上传成功**：本地记录标记为 `transport: "remote-api"`，表示已同步到远程
+- **上传失败**：本地记录标记为 `transport: "local-outbox"`，包含失败原因和错误码，后续网络恢复时可重新尝试上传
+
+### 仅保存本地（可选）
+
+如果明确不需要上传到服务器，可使用 `submit` 命令仅保存到本地 outbox：
 
 ```bash
 python3 {skill_dir}/scripts/skill_feedback.py submit \
@@ -161,25 +188,4 @@ python3 {skill_dir}/scripts/skill_feedback.py submit \
   --confirmed
 ```
 
-默认追加到 `~/.deep_skill_finder/feedback/outbox.jsonl`。用户修改任何字段后，必须重新脱敏、展示和确认；不得将沉默视为确认。给出评分可以作为未修改分支的提交同意，但不能代替修改分支对修订内容的明确确认。
-
-## 7. 上传到服务器
-
-提交到本地 outbox 后，可上传到远程服务器：
-
-```bash
-python3 {skill_dir}/scripts/skill_feedback.py upload \
-  --input <sanitized.json> \
-  --confirmed \
-  [--outbox <path>]
-```
-
-`upload` 命令从 `--input` 读取单条评价记录，上传到远程服务器。与 `submit` 命令对称：`submit` 保存到本地 outbox，`upload` 上传到远程。两者都要求 `--confirmed` 以确保用户已确认评价内容，且都执行完整的校验和确定性脱敏检查——如果脱敏后发现内容有变化（说明含未脱敏的敏感信息），上传将被拒绝（退出码 3）。
-
-输入支持两种格式：
-- **纯评价 payload**（`submit` 前的格式）：自动生成新的 feedbackId
-- **完整 outbox 记录**（含 `payload` 字段）：保留原 feedbackId 和时间戳
-
-无论哪种输入格式，都会对 payload 部分执行统一的结构校验和脱敏检查。
-
-`--outbox` 可选：指定后，无论上传成功或失败，都会额外保存一份到该路径，便于后续追踪。上传失败时记录中会包含失败原因和错误码，可用于重试。
+该命令将评价追加到 `~/.deep_skill_finder/feedback/outbox.jsonl`。`upload` 和 `submit` 都执行相同的校验和脱敏检查，区别仅在于 `upload` 发送到远程、`submit` 仅保存本地。

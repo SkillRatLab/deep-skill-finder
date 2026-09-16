@@ -8,6 +8,7 @@
 import argparse
 import json
 import os
+import socket
 import re
 import sys
 import tempfile
@@ -69,7 +70,7 @@ def get_api_url_candidates():
 
     # 3. 兜底
     if not candidates:
-        candidates = ["https://www.meyo.life/api/v1"]
+        candidates = ["https://www.deepskill.market/api/v1"]
 
     return candidates
 
@@ -144,11 +145,34 @@ def api_request(endpoint: str, method: str = "GET", data: dict = None, extra_hea
             result = json.loads(resp.read())
             return result
     except urllib.error.HTTPError as e:
-        return {"code": e.code, "error": True, "message": e.reason}
+        return {"code": e.code, "error": True, "errorType": "http"}
     except urllib.error.URLError as e:
-        return {"code": 0, "error": True, "message": str(e.reason)}
-    except Exception as e:
-        return {"code": 0, "error": True, "message": str(e)}
+        error_type = "timeout" if isinstance(e.reason, (TimeoutError, socket.timeout)) else "network"
+        return {"code": 0, "error": True, "errorType": error_type}
+    except (TimeoutError, socket.timeout):
+        return {"code": 0, "error": True, "errorType": "timeout"}
+    except Exception:
+        return {"code": 0, "error": True, "errorType": "service"}
+
+
+def _structured_search_error(result: dict) -> dict:
+    """Return a stable, user-safe error payload for an Agent to interpret."""
+    error_type = result.get("errorType", "service")
+    status = result.get("code", 0)
+    if error_type == "timeout":
+        code, message = "search_timeout", "搜索服务请求超时"
+    elif error_type == "network":
+        code, message = "search_network_error", "无法连接搜索服务"
+    elif error_type == "http" and status >= 500:
+        code, message = "search_service_error", "搜索服务暂时不可用"
+    elif error_type == "http":
+        code, message = "search_request_error", "搜索请求未被服务接受"
+    else:
+        code, message = "search_service_error", "搜索服务遇到内部错误"
+    error = {"code": code, "message": message}
+    if status:
+        error["httpStatus"] = status
+    return error
 
 
 def _parse_skill_item(s: dict) -> dict:
@@ -175,7 +199,7 @@ def search_deep(content: str, agent_type: str = None) -> tuple:
     """语义深度搜索（如果 API 支持）。
 
     API 已按相关性排序，返回 Top5 候选。
-    返回 (skills, request_id)，request_id 用于串联下载链路。
+    返回 (skills, request_id, error)，request_id 用于串联下载链路；成功时 error 为 None。
     """
     params = {"query": content, "ref": "meyo"}
     if agent_type:
@@ -187,11 +211,7 @@ def search_deep(content: str, agent_type: str = None) -> tuple:
     result = api_request(f"/skills/search/deep?{query_string}", extra_headers={"X-Client-Id": get_client_id()}, timeout=60)
 
     if result.get("error"):
-        # 404 = API 不支持，静默降级
-        if result.get("code") == 404:
-            return [], ""
-        print(f"  ⚠ 语义搜索失败: {result.get('message', '')}", file=sys.stderr)
-        return [], ""
+        return [], "", _structured_search_error(result)
 
     data = result.get("data", [])
     # DeepSearchResultVO 在 data 顶层带 requestId
@@ -213,12 +233,12 @@ def search_deep(content: str, agent_type: str = None) -> tuple:
     else:
         skills = []
     if not isinstance(skills, list):
-        return [], request_id
+        return [], request_id, None
 
     parsed = [_parse_skill_item(s) for s in skills]
-    return parsed, request_id
+    return parsed, request_id, None
 
-
+  
 def check_version():
     """输出版本检查结果 JSON：{current_version, latest_version, update_available}"""
     current = get_skill_version()
@@ -265,7 +285,7 @@ def main():
     if not args.query:
         parser.error("请提供搜索关键词")
 
-    deep_results, request_id = search_deep(args.query, agent_type=args.agent_type)
+    deep_results, request_id, search_error = search_deep(args.query, agent_type=args.agent_type)
 
     output = {
         "community": deep_results,
@@ -274,6 +294,8 @@ def main():
             "deep": len(deep_results),
         },
     }
+    if search_error:
+        output["error"] = search_error
 
     # 保存结果（供 install 脚本读取 requestId 串联下载链路）
     output_path = args.output or str(Path(tempfile.gettempdir()) / "deep_search_results.json")
@@ -282,7 +304,8 @@ def main():
 
     # 同时输出到 stdout
     print(json.dumps(output, ensure_ascii=False, indent=2))
+    return 1 if search_error else 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

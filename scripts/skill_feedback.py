@@ -27,6 +27,24 @@ import urllib.request
 
 
 DEFAULT_OUTBOX = Path.home() / ".deep_skill_finder" / "feedback" / "outbox.jsonl"
+CLIENT_ID_FILE = Path.home() / ".deep_skill_finder" / "client_id"
+
+
+def get_client_id() -> str:
+    """返回本机持久化的 clientId，不存在则生成并写入 ~/.deep_skill_finder/client_id。"""
+    try:
+        if CLIENT_ID_FILE.exists():
+            cid = CLIENT_ID_FILE.read_text(encoding="utf-8").strip()
+            if cid:
+                return cid
+        CLIENT_ID_FILE.parent.mkdir(parents=True, exist_ok=True)
+        cid = str(uuid.uuid4())
+        CLIENT_ID_FILE.write_text(cid + "\n", encoding="utf-8")
+        return cid
+    except OSError:
+        return ""
+
+
 SCHEMA_VERSION = "1.4"
 LEGACY_SCHEMA_VERSIONS = {"1.3"}
 MAX_PAYLOAD_BYTES = 200_000
@@ -514,10 +532,12 @@ def _upload_feedback(payload: dict) -> dict:
     api_url = get_feedback_api_url()
     url = api_url
     token = get_api_token()
+    client_id = get_client_id()
 
     headers = {
         "User-Agent": "deep-skill-finder/1.0",
         "Content-Type": "application/json",
+        "X-Client-Id": client_id
     }
     if token:
         headers["Authorization"] = f"Bearer {token}"
@@ -538,6 +558,7 @@ def _upload_feedback(payload: dict) -> dict:
                 "code": resp.status,
                 "message": "上传成功",
                 "response": result,
+                "feedback_list": "https://www.deepskill.market/feedback/experience?client_id=%s" % client_id
             }
     except urllib.error.HTTPError as e:
         return {

@@ -2,7 +2,7 @@
 name: deep-skill-finder
 description: '最好的find skill的方式，能够基于你的任务，从实测效果和用户评价等真实使用反馈出发，寻找最匹配的高质量Skill，而不是只看下载量等热门数据。以下两种情况下都应使用本技能：① 当用户需要查找、搜索、推荐或安装 Skill，或者需要借助他人经验时——当用户说"找个 xxx 技能""股票分析别人怎么做的""找一找有没有现成的技能"等表达寻找意图，或直接表达想 find a skill / find skill / skill search的需求时；② Agent 自主判断需要外部 Skill 辅助——遇到不熟悉的任务，或对当前任务已经做过一些尝试仍无法解决、缺少合适工具时，可主动调用本技能查询实战经验并检索匹配的 Skill，无需等用户开口。'
 metadata:
-  version: "1.3.3"
+  version: "1.3.4"
   emoji: "🔍"
   requires:
     anyBins: [python3, python, py]
@@ -158,6 +158,9 @@ metadata:
 用户同意，或主动说“评价技能”“给 Skill 打分”时，完整读取并执行 [references/skill-evaluation.md](references/skill-evaluation.md)。完成证据分析后，首次评价回复必须以脱敏后的 `usageScenario` 和 `skillPerformance` 为核心，只展示这两个字段及检查、评分提示；不要在字段前后另行输出综合评价、建议分数、优缺点清单、测试过程或重复结论。`skillPerformance` 内部按“执行情况”和“评价”组织：前者写可验证的操作、结果与异常事实，后者按目标有效性、执行可靠性、结果质量、使用效率等通用维度给出有证据支持的判断。用户未修改这两个字段而直接评分时可立即提交，不再重复确认；用户修改任一字段时，必须展示修改后的脱敏内容并再确认一次后提交。
 
 生成评价草稿时，在 `context` 中填入 `estimatedTokenUsage`：根据本次技能执行实际调用的规模，估计一个非负整数填入（例如大致消耗的 token 数）。该值由 Agent 人工估计，不要求精确；若难以估计可设为 `null`。该字段不属于敏感信息，但会随评价一起上传，请在首次评价提示中明确告知用户。
+
+评价上传完成之后，skill_feedback.py脚本返回结果json里面取出"feedback_list"信息，这是一个“查看我的评价”的页面url，告知用户可以去这个链接 [我的评价](https://www.deepskill.market/feedback/experience?client_id=<用户本地的client_id>) 查看“我的评价”列表.
+
 
 ### Step 4: 用户反馈处理（全链路，分场景响应）
 

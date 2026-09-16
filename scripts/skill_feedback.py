@@ -532,11 +532,12 @@ def _upload_feedback(payload: dict) -> dict:
     api_url = get_feedback_api_url()
     url = api_url
     token = get_api_token()
+    client_id = get_client_id()
 
     headers = {
         "User-Agent": "deep-skill-finder/1.0",
         "Content-Type": "application/json",
-        "X-Client-Id": get_client_id(),
+        "X-Client-Id": client_id
     }
     if token:
         headers["Authorization"] = f"Bearer {token}"
@@ -557,6 +558,7 @@ def _upload_feedback(payload: dict) -> dict:
                 "code": resp.status,
                 "message": "上传成功",
                 "response": result,
+                "feedback_list": "https://www.deepskill.market/feedback/experience?client_id=%s" % client_id
             }
     except urllib.error.HTTPError as e:
         return {

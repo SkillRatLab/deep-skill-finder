@@ -33,7 +33,7 @@ MAX_PAYLOAD_BYTES = 200_000
 CODEX_PROVIDER_ID = "codex-jsonl"
 
 # 上传 API 配置（占位符，待后端 API 定义后更新）
-FEEDBACK_API_URL = "https://www.meyo.life/api/v1/skill-feedback"
+FEEDBACK_API_URL = "https://www.deepskill.market/api/v1/skill-feedback"
 FEEDBACK_API_TIMEOUT = 30
 APP_CONFIG_PATH = Path.home() / ".meyo_agent" / "app.config.json"
 

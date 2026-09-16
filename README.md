@@ -10,7 +10,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Live in 40+ Agents](https://img.shields.io/badge/live%20in-40%2B%20AI%20Agents-8A2BE2.svg)](#ecosystem-status)
-[![Skills](https://img.shields.io/badge/skills-50k%2B-brightgreen.svg)](https://www.meyo.life/skill)
+[![Skills](https://img.shields.io/badge/skills-50k%2B-brightgreen.svg)](https://www.deepskill.market/skill)
 
 English | [中文](README.zh.md)
 
@@ -24,7 +24,7 @@ Copy this prompt, send it to your Agent (Claude Code / Codex / OpenClaw / Cursor
 
 ```
 Please install the deep-skill-finder skill: download from
-https://www.meyo.life/api/v1/skill-finder, extract to local skills
+https://www.deepskill.market/api/v1/skill-finder, extract to local skills
 directory, and enable it.
 ```
 
@@ -108,7 +108,7 @@ Send this prompt directly to your Agent:
 
 ```
 Please install the deep-skill-finder skill: download the skill package from
-https://www.meyo.life/api/v1/skill-finder, extract it to the local skills
+https://www.deepskill.market/api/v1/skill-finder, extract it to the local skills
 directory, and enable it.
 ```
 
@@ -217,7 +217,7 @@ A: 40+ agent runtimes including Claude Code, Codex, OpenClaw, Cursor, Windsurf, 
 Issues and pull requests are welcome.
 
 ### If you're a user
-- If a specific Skill ranks too high or too low, the underlying signal lives in [Meyo Community](https://www.meyo.life/community/home) — leaving real run records there is the most direct way to improve future rankings.
+- If a specific Skill ranks too high or too low, the underlying signal lives in [Meyo Community](https://www.deepskill.market/community/home) — leaving real run records there is the most direct way to improve future rankings.
 - Report issues or request coverage of specific tasks/domains via [Issues](https://github.com/wheelry/deep-skill-finder/issues).
 
 ### If you're a Skill creator
@@ -257,7 +257,7 @@ All feedback content is first processed by a deterministic redaction script; the
 
 ## Related links
 
-- **Landing page:** https://www.meyo.life/skill
-- **Community:** https://www.meyo.life/community/skills
+- **Landing page:** https://www.deepskill.market/skill
+- **Community:** https://www.deepskill.market/community/skills
 - **SkillHub listing:** https://skillhub.cn/skills/deep-skill-finder
 - **ClawHub listing:** https://clawhub.ai/lintong123/skills/deep-skill-finder

@@ -10,7 +10,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Live in 40+ Agents](https://img.shields.io/badge/live%20in-40%2B%20AI%20Agents-8A2BE2.svg)](#生态支持情况)
-[![Skills](https://img.shields.io/badge/skills-50k%2B-brightgreen.svg)](https://www.meyo.life/skill)
+[![Skills](https://img.shields.io/badge/skills-50k%2B-brightgreen.svg)](https://www.deepskill.market/skill)
 
 [English](README.md) | 中文
 
@@ -24,7 +24,7 @@
 
 ```
 请安装 deep-skill-finder Skill：从
-https://www.meyo.life/api/v1/skill-finder 下载安装包，解压到本地 Skills
+https://www.deepskill.market/api/v1/skill-finder 下载安装包，解压到本地 Skills
 目录并启用。
 ```
 
@@ -183,7 +183,7 @@ deep-skill-finder 开箱即用地支持 **40+ Agent 运行环境**。无论你�
 
 ```
 请安装 deep-skill-finder Skill：从
-https://www.meyo.life/api/v1/skill-finder 下载安装包，解压到本地 Skills
+https://www.deepskill.market/api/v1/skill-finder 下载安装包，解压到本地 Skills
 目录并启用。
 ```
 
@@ -363,7 +363,7 @@ python3 scripts/deep_skill_install.py --dir ~/.catpaw/skills --list
 
 ### 如果你是用户
 
-- 如果某个 Skill 的推荐位置不准确，请在 [Meyo Community](https://www.meyo.life/community/home) 留下真实运行记录。具体的任务、结果和使用条件，比单独的评分更能改善后续推荐。
+- 如果某个 Skill 的推荐位置不准确，请在 [Meyo Community](https://www.deepskill.market/community/home) 留下真实运行记录。具体的任务、结果和使用条件，比单独的评分更能改善后续推荐。
 - 通过 [Issues](https://github.com/wheelry/deep-skill-finder/issues) 报告问题，或申请覆盖特定任务和领域。
 
 ### 如果你是 Skill 创作者
@@ -383,7 +383,7 @@ python3 scripts/deep_skill_install.py --dir ~/.catpaw/skills --list
 ## 觉得有帮助？
 
 - ⭐ **[给本仓库点个 Star](../../stargazers)** —— 帮助更多 Agent 用户发现 DSF
-- 💬 **[分享一次真实使用](https://www.meyo.life/community/home)** —— 让你的经验成为下一次推荐的依据
+- 💬 **[分享一次真实使用](https://www.deepskill.market/community/home)** —— 让你的经验成为下一次推荐的依据
 - 🐛 **[报告问题](../../issues)** —— 如果推荐结果看起来不准确，请告诉我们
 - 📖 **[立即体验 DSF](#-在你的-agent-中安装30-秒)** —— 只需 30 秒即可安装
 
@@ -397,7 +397,7 @@ python3 scripts/deep_skill_install.py --dir ~/.catpaw/skills --list
 
 ## 相关链接
 
-- **产品主页：** https://www.meyo.life/skill
-- **社区：** https://www.meyo.life/community/skills
+- **产品主页：** https://www.deepskill.market/skill
+- **社区：** https://www.deepskill.market/community/skills
 - **SkillHub 页面：** https://skillhub.cn/skills/deep-skill-finder
 - **ClawHub 页面：** https://clawhub.ai/lintong123/skills/deep-skill-finder

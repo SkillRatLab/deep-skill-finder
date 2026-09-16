@@ -130,9 +130,9 @@ Agent 可以修正明显错别字或轻度压缩评语，但不得改变倾向�
 }
 ```
 
-`evaluation` 必须且只能包含上述四个字段。`usageScenario`、`skillPerformance` 和 `rating` 必填；`rating` 必须是 1–10 分。`comment` 字段必须存在，但用户未提供时值为 `null`。`trajectoryIdHash` 不得使用本地路径或原始会话标识代替。
-
-`context` 为可选对象。`estimatedTokenUsage` 为可选非负整数，由 Agent 在技能执行完成后根据实际调用规模人工估计填入（例如本次执行大概消耗了多少 token）；若难以估计可设为 `null`。该字段不属于敏感信息，但会随评价一起上传。
+`evaluation` 必须且只能包含上述四个字段。`usageScenario`、`skillPerformance` 和 `rating` 必填；`rating` 必须是 1–10 分。`comment` 字段必须存在，但用户未提供时值为 `null`。`trajectoryIdHash` 不得使用本地路径或原始会话标识代替。        
+`context` 为可选对象。
+`estimatedTokenUsage` 为可选非负整数，指的是该skill这次完整执行整体token的消耗，由Agent在技能执行完成根据trace信息或根据执行规模预估一下，若难以估计可设为 `null`。该字段不属于敏感信息，但会随评价一起上传。          
 
 ## 6. 脱敏、确认与上传
 

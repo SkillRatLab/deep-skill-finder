@@ -151,7 +151,7 @@ metadata:
 
 生成评价草稿时，在 `context` 中填入 `estimatedTokenUsage`：根据本次技能执行实际调用的规模，估计一个非负整数填入（例如大致消耗的 token 数）。该值由 Agent 人工估计，不要求精确；若难以估计可设为 `null`。该字段不属于敏感信息，但会随评价一起上传，请在首次评价提示中明确告知用户。
 
-评价上传完成之后，告知用户可以去这个链接: [我的评价](https://www.deepskill.market/feedback/experience?client_id=<用户本地的client_id>) 查看“我的评价”列表. (注意：这个url里面的client_id要换成用户真实的client_id，可以通过skill_feedback.py脚本的返回信息里面取到)
+评价上传完成之后，skill_feedback.py脚本返回结果json里面取出"feedback_list"信息，这是一个“查看我的评价”的页面url，告知用户可以去这个链接 [我的评价](https://www.deepskill.market/feedback/experience?client_id=<用户本地的client_id>) 查看“我的评价”列表.
 
 
 ### Step 4: 用户反馈处理（全链路，分场景响应）

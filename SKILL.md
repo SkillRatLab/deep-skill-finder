@@ -1,6 +1,6 @@
 ---
 name: deep-skill-finder
-description: '最好的找Skill的方式，能够基于你的任务，去寻找最匹配的高质量Skill。以下三种情况下都应使用本技能：① 用户主动要找 Skill，或者需要借助他人经验时——当用户说"找个 xxx 技能""股票分析别人怎么做的""找一找有没有现成的技能"等表达寻找意图时；② Agent 自主判断需要外部 Skill 辅助——遇到不熟悉的任务，或对当前任务已经做过一些尝试仍无法解决、缺少合适工具时，可主动调用本技能查询实战经验并检索匹配的 Skill，无需等用户开口。；③ 用户说"评价技能""给 Skill 打分""反馈某个 Skill"，或需要从当前 Agent 最近 30 天 trajectory 中选择并评价使用过的 Skill 时。评价支持已知 trajectory Provider，也支持当前 Agent 自定位和动态理解未知格式。'
+description: '最好的find skill的方式，能够基于你的任务，从实测效果和用户评价等真实使用反馈出发，寻找最匹配的高质量Skill，而不是只看下载量等热门数据。以下两种情况下都应使用本技能：① 当用户需要查找、搜索、推荐或安装 Skill，或者需要借助他人经验时——当用户说"找个 xxx 技能""股票分析别人怎么做的""找一找有没有现成的技能"等表达寻找意图，或直接表达想 find a skill / find skill / skill search的需求时；② Agent 自主判断需要外部 Skill 辅助——遇到不熟悉的任务，或对当前任务已经做过一些尝试仍无法解决、缺少合适工具时，可主动调用本技能查询实战经验并检索匹配的 Skill，无需等用户开口。'
 metadata:
   version: "1.3.3"
   emoji: "🔍"
@@ -15,23 +15,31 @@ metadata:
 ### Step 0: 版本检查（每次使用本 skill 前必执行）
 
 1. 读取当前 SKILL.md frontmatter 中的 `version` 字段，记为 `{current_version}`
-2. 调用版本检查接口获取远程最新版本号：
+2. 确定当前渠道 `ref` 值（从安装包的 `scripts/deep_skill_install.py` 中 `params = {"name": ..., "ref": "xxx"}` 获取，常见值：`meyo`/`skillhub`/`github`/`clawhub`/`friday`）
+3. 调用版本检查接口获取远程最新版本号：
    ```bash
-   {python} {skill_dir}/scripts/deep_skill_search.py --check-version
+   {python} {skill_dir}/scripts/deep_skill_search.py --check-version --ref <ref值>
    ```
-   若脚本不支持 `--check-version`，改用以下方式直接读取远程 SKILL.md frontmatter：
+   脚本会根据 `ref` 自动选择对应渠道的版本检查 API：
+   - `meyo` → DeepSkill Market API（`https://www.deepskill.market/api/v1/skills/deep-skill-finder`，直接返回 `latestVersion`，兼容 `meyo.life` 旧域名）
+   - `skillhub` → SkillHub CLI（`skillhub search` 输出解析 `version` 字段）
+   - `clawhub` → ClawHub CLI（`openclaw skills info` 输出解析 `version` 字段）
+   - `friday` → 回退到 GitHub 主仓库（Friday 平台无直接版本查询 API）
+   - `github` → GitHub 主仓库 API（`wheelry/deep-skill-finder` 的 SKILL.md frontmatter）
+
+   若脚本不支持 `--check-version`，改用以下方式直接读取远程 SKILL.md frontmatter（GitHub 兜底）：
    ```bash
    curl -s "https://api.github.com/repos/wheelry/deep-skill-finder/contents/SKILL.md" -H "Accept: application/vnd.github.v3+json" | {python} -c "import sys,json,base64,re; d=json.load(sys.stdin); c=base64.b64decode(d['content']).decode(); m=re.search(r'version:\s*\"([^\"]+)\"', c); print(m.group(1) if m else 'unknown')"
    ```
-3. 比较版本：
+4. 比较版本：
    - `{current_version}` < 远程最新版本 → 提示用户：
      > 发现 deep-skill-finder 有新版本（当前 {current_version}，最新 {latest_version}），建议更新以获得最新功能和修复。要现在更新吗？
-     - 用户同意 → 从 GitHub 拉取最新 SKILL.md 和 scripts/ 覆盖本地文件，然后继续执行
+     - 用户同意 → 从对应渠道拉取最新版本覆盖本地文件，然后继续执行
      - 用户拒绝 → 继续执行（API 调用仍会携带版本标识 `skillVersion={current_version}`）
    - `{current_version}` >= 远程最新版本 → 正常继续
-4. 后续所有搜索/下载 API 请求会自动携带 `skillVersion={current_version}` 参数（脚本已内置），服务端可用于版本统计和兼容性处理
+5. 后续所有搜索/下载 API 请求会自动携带 `skillVersion={current_version}` 参数（脚本已内置），服务端可用于版本统计和兼容性处理
 
-> **注意**：如果网络环境无法访问 GitHub，版本检查会超时或失败，此时直接使用本地版本继续即可，不影响核心功能。
+> **注意**：如果网络环境无法访问对应渠道 API，版本检查会超时或失败，此时直接使用本地版本继续即可，不影响核心功能。
 
 ### Step 1: Skill检索
 

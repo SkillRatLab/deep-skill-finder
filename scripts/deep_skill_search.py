@@ -239,10 +239,30 @@ def search_deep(content: str, agent_type: str = None) -> tuple:
     return parsed, request_id, None
 
   
-def check_version():
-    """输出版本检查结果 JSON：{current_version, latest_version, update_available}"""
-    current = get_skill_version()
-    latest = "unknown"
+def _check_version_meyo(skill_name: str) -> str:
+    """从 DeepSkill Market / Meyo API 获取最新版本号（单请求直接拿 latestVersion）。"""
+    api_bases = get_api_url_candidates() + ["https://www.meyo.life/api/v1"]
+    for base in api_bases:
+        try:
+            api_url = f"{base}/skills/{urllib.parse.quote(skill_name)}"
+            headers = {"User-Agent": "deep-skill-finder/1.0", "Accept": "application/json"}
+            req = urllib.request.Request(api_url, headers=headers)
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read())
+            if data.get("code") == 200:
+                latest = data.get("data", {}).get("latestVersion", "")
+                if latest:
+                    return latest
+                m = re.search(r'version:\s*"([^"]+)"', data.get("data", {}).get("skillMdContent", "") or "")
+                if m:
+                    return m.group(1)
+        except Exception:
+            continue
+    return "unknown"
+
+
+def _check_version_github(skill_name: str = "deep-skill-finder") -> str:
+    """从 GitHub 主仓库 SKILL.md frontmatter 获取最新版本号。"""
     try:
         api_url = "https://api.github.com/repos/wheelry/deep-skill-finder/contents/SKILL.md"
         headers = {"Accept": "application/vnd.github.v3+json", "User-Agent": "deep-skill-finder/1.0"}
@@ -256,9 +276,60 @@ def check_version():
             content = base64.b64decode(d["content"]).decode()
             m = re.search(r'version:\s*"([^"]+)"', content)
             if m:
-                latest = m.group(1)
+                return m.group(1)
     except Exception:
         pass
+    return "unknown"
+
+
+def _check_version_skillhub(skill_name: str) -> str:
+    """从 SkillHub CLI 获取最新版本号（skillhub search 输出含 version 字段）。"""
+    import subprocess
+    try:
+        result = subprocess.run(["skillhub", "search", skill_name], capture_output=True, text=True, timeout=15)
+        output = result.stdout + result.stderr
+        m = re.search(r'version:\s*(\d+\.\d+\.\d+)', output)
+        if m:
+            return m.group(1)
+    except Exception:
+        pass
+    return "unknown"
+
+
+def _check_version_clawhub(skill_name: str) -> str:
+    """从 ClawHub CLI 获取最新版本号（openclaw skills info 输出含 version 字段）。"""
+    import subprocess
+    try:
+        result = subprocess.run(["openclaw", "skills", "info", skill_name], capture_output=True, text=True, timeout=15)
+        output = result.stdout + result.stderr
+        m = re.search(r'version:\s*(\d+\.\d+\.\d+)', output)
+        if m:
+            return m.group(1)
+    except Exception:
+        pass
+    return "unknown"
+
+
+def _check_version_friday(skill_name: str) -> str:
+    """Friday 平台无直接版本查询 API，回退到 GitHub 主仓库。"""
+    return _check_version_github(skill_name)
+
+
+# 各渠道版本检查器注册表：--ref 值 → 检查函数
+CHANNEL_VERSION_CHECKERS = {
+    "meyo": _check_version_meyo,
+    "github": _check_version_github,
+    "skillhub": _check_version_skillhub,
+    "clawhub": _check_version_clawhub,
+    "friday": _check_version_friday,
+}
+
+
+def check_version(ref: str = "meyo", skill_name: str = "deep-skill-finder"):
+    """输出版本检查结果 JSON：{current_version, latest_version, update_available, channel}"""
+    current = get_skill_version()
+    checker = CHANNEL_VERSION_CHECKERS.get(ref, _check_version_meyo)
+    latest = checker(skill_name)
 
     def parse_ver(v):
         try:
@@ -267,7 +338,12 @@ def check_version():
             return (0,)
 
     update = latest != "unknown" and parse_ver(current) < parse_ver(latest)
-    print(json.dumps({"current_version": current, "latest_version": latest, "update_available": update}, ensure_ascii=False))
+    print(json.dumps({
+        "current_version": current,
+        "latest_version": latest,
+        "update_available": update,
+        "channel": ref,
+    }, ensure_ascii=False))
 
 
 def main():
@@ -276,10 +352,11 @@ def main():
     parser.add_argument("--agent-type", default=None, help="当前 Agent 类型（如 openclaw/hermes/qclaw/catdesk 等，可选）")
     parser.add_argument("--output", help="输出 JSON 到文件（默认 stdout）")
     parser.add_argument("--check-version", action="store_true", help="检查是否有新版本")
+    parser.add_argument("--ref", default="meyo", help="渠道标识（meyo/skillhub/clawhub/friday/github），用于 --check-version 选择对应渠道的版本检查 API")
     args = parser.parse_args()
 
     if args.check_version:
-        check_version()
+        check_version(ref=args.ref)
         return
 
     if not args.query:

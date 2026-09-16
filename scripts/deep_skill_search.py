@@ -70,7 +70,7 @@ def get_api_url_candidates():
 
     # 3. 兜底
     if not candidates:
-        candidates = ["https://www.meyo.life/api/v1"]
+        candidates = ["https://www.deepskill.market/api/v1"]
 
     return candidates
 

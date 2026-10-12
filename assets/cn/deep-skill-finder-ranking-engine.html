@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>deep-skill-finder 8层排序机制</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: linear-gradient(160deg, #eef5ff 0%, #e0ecff 40%, #f0f6ff 100%);
+    width: 1200px;
+    padding: 50px 60px 55px;
+    color: #1a2a4a;
+  }
+
+  /* ===== Title ===== */
+  .header {
+    text-align: center;
+    margin-bottom: 12px;
+  }
+  .header .badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #1e6fff, #00a8ff);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 4px 18px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+    box-shadow: 0 3px 10px rgba(30,111,255,0.3);
+  }
+  .header h1 {
+    font-size: 34px;
+    font-weight: 900;
+    color: #0d2b5e;
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+  }
+  .header .subtitle {
+    font-size: 15px;
+    color: #4a6a9a;
+    font-weight: 400;
+  }
+  .header .subtitle span {
+    color: #1e6fff;
+    font-weight: 700;
+  }
+
+  .divider-main {
+    width: 80px;
+    height: 4px;
+    background: linear-gradient(90deg, #1e6fff, #00d4ff);
+    border-radius: 2px;
+    margin: 18px auto 30px;
+  }
+
+  /* ===== User Input ===== */
+  .user-input {
+    background: #fff;
+    border: 2px solid #c8dcff;
+    border-radius: 12px;
+    padding: 14px 24px;
+    text-align: center;
+    font-size: 14px;
+    color: #3a5a8a;
+    margin: 0 auto 0;
+    width: 580px;
+    box-shadow: 0 4px 16px rgba(30,111,255,0.12);
+  }
+  .user-input .icon { font-size: 18px; margin-right: 8px; }
+
+  /* ===== Connector ===== */
+  .connector {
+    width: 3px;
+    height: 28px;
+    background: linear-gradient(180deg, #4a9fff, #1e6fff);
+    margin: 0 auto;
+    border-radius: 2px;
+    position: relative;
+  }
+  .connector::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-top: 9px solid #1e6fff;
+  }
+
+  /* ===== Stage Banner ===== */
+  .stage-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin: 6px auto 14px;
+  }
+  .stage-banner .line {
+    flex: 1;
+    max-width: 180px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #6aa0ff, transparent);
+  }
+  .stage-banner .label {
+    background: linear-gradient(135deg, #0d4dbe, #1e6fff);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 6px 24px;
+    border-radius: 8px;
+    letter-spacing: 2px;
+    box-shadow: 0 3px 12px rgba(13,77,190,0.35);
+    white-space: nowrap;
+  }
+  .stage-banner.stage2 .label {
+    background: linear-gradient(135deg, #0066cc, #0099dd);
+  }
+  .stage-banner.stage2 .line {
+    background: linear-gradient(90deg, transparent, #00a8ff, transparent);
+  }
+
+  /* ===== Layer Card ===== */
+  .layer-card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 16px 24px;
+    width: 740px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    box-shadow: 0 4px 18px rgba(30,111,255,0.10);
+    border: 1.5px solid #d8e8ff;
+    position: relative;
+    transition: all .2s;
+  }
+  .layer-card .num {
+    flex-shrink: 0;
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1e6fff, #00a8ff);
+    color: #fff;
+    font-size: 20px;
+    font-weight: 900;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 3px 10px rgba(30,111,255,0.35);
+  }
+  .layer-card .body { flex: 1; }
+  .layer-card .body .name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0d2b5e;
+    margin-bottom: 4px;
+  }
+  .layer-card .body .name .en {
+    font-size: 12px;
+    color: #6a8aba;
+    font-weight: 400;
+    margin-left: 8px;
+  }
+  .layer-card .body .desc {
+    font-size: 13.5px;
+    color: #4a5e7a;
+    line-height: 1.6;
+  }
+  .layer-card .tag {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: #1e6fff;
+    background: #e8f1ff;
+    padding: 3px 12px;
+    border-radius: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  /* Stage 2 card variant */
+  .layer-card.s2 .num {
+    background: linear-gradient(135deg, #0066cc, #00b8e6);
+    box-shadow: 0 3px 10px rgba(0,150,220,0.35);
+  }
+  .layer-card.s2 { border-color: #bce0ff; }
+
+  /* ===== Three-Channel Recall ===== */
+  .recall-section {
+    width: 1000px;
+    margin: 0 auto;
+    padding: 18px 0;
+    background: rgba(255,255,255,0.5);
+    border-radius: 16px;
+    border: 1.5px dashed #8abcff;
+  }
+  .recall-section .title {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e6fff;
+    margin-bottom: 16px;
+    letter-spacing: 1px;
+  }
+  .recall-channels {
+    display: flex;
+    justify-content: center;
+    gap: 22px;
+    align-items: flex-start;
+    position: relative;
+  }
+  .recall-channel {
+    width: 250px;
+    background: #fff;
+    border-radius: 12px;
+    padding: 14px 16px;
+    text-align: center;
+    border: 2px solid #4a9fff;
+    box-shadow: 0 4px 14px rgba(74,159,255,0.15);
+    position: relative;
+    z-index: 2;
+  }
+  .recall-channel .ch-num {
+    display: inline-block;
+    width: 26px; height: 26px;
+    line-height: 26px;
+    border-radius: 50%;
+    background: #1e6fff;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .recall-channel .ch-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0d2b5e;
+    margin-bottom: 4px;
+  }
+  .recall-channel .ch-desc {
+    font-size: 12px;
+    color: #5a7090;
+    line-height: 1.5;
+  }
+
+  /* Converge lines */
+  .converge-top {
+    width: 600px;
+    height: 36px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .converge-top svg { width: 100%; height: 100%; }
+
+  .converge-bottom {
+    width: 600px;
+    height: 36px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .converge-bottom svg { width: 100%; height: 100%; }
+
+  /* Merge box */
+  .merge-box {
+    background: linear-gradient(135deg, #e8f1ff, #d0e4ff);
+    border: 2px solid #4a9fff;
+    border-radius: 10px;
+    padding: 10px 28px;
+    text-align: center;
+    width: 320px;
+    margin: 0 auto;
+    font-size: 15px;
+    font-weight: 700;
+    color: #0d4dbe;
+    box-shadow: 0 3px 12px rgba(74,159,255,0.2);
+  }
+
+  /* ===== Output box ===== */
+  .output-box {
+    background: linear-gradient(135deg, #0d4dbe, #1e6fff);
+    border-radius: 14px;
+    padding: 18px 30px;
+    text-align: center;
+    width: 580px;
+    margin: 0 auto;
+    color: #fff;
+    box-shadow: 0 6px 22px rgba(13,77,190,0.4);
+  }
+  .output-box .title {
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .output-box .items {
+    font-size: 13px;
+    opacity: 0.92;
+    line-height: 1.7;
+  }
+
+  /* Feedback loop */
+  .feedback-loop {
+    width: 940px;
+    margin: 18px auto 0;
+    padding: 14px 24px;
+    background: rgba(255,255,255,0.6);
+    border-radius: 10px;
+    border: 1.5px dashed #7ab8ff;
+    text-align: center;
+    font-size: 13px;
+    color: #3a5a8a;
+  }
+  .feedback-loop .arrow { color: #1e6fff; font-weight: 700; }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    margin-top: 30px;
+    font-size: 12px;
+    color: #8a9aba;
+  }
+  .footer a { color: #1e6fff; text-decoration: none; }
+
+  .compact-connector { height: 20px !important; }
+</style>
+</head>
+<body>
+
+<!-- ===== Header ===== -->
+<div class="header">
+  <div class="badge">deep-skill-finder</div>
+  <h1>8 层排序机制</h1>
+  <div class="subtitle">专业检索 + 真实评价 · <span>从 200k+ Skill 生态中找到真正适合的技能</span></div>
+</div>
+<div class="divider-main"></div>
+
+<!-- ===== User Input ===== -->
+<div class="user-input">
+  <span class="icon">👤</span>用户用自然语言描述具体任务
+</div>
+
+<!-- Connector to Layer 1 -->
+<div class="connector"></div>
+
+<!-- ===== Stage 1 Banner ===== -->
+<div class="stage-banner">
+  <div class="line"></div>
+  <div class="label">第一阶段：专业检索</div>
+  <div class="line"></div>
+</div>
+
+<!-- ===== Layer 1 ===== -->
+<div class="layer-card">
+  <div class="num">1</div>
+  <div class="body">
+    <div class="name">任务意图理解 <span class="en">Task-intent Understanding</span></div>
+    <div class="desc">识别用户真正想完成的目标，以及输入、输出、工作流方向和环境要求</div>
+  </div>
+  <div class="tag">意图解析</div>
+</div>
+
+<!-- Connector to Three-Channel Recall -->
+<div class="connector compact-connector"></div>
+
+<!-- ===== Three-Channel Recall (Parallel → Converge) ===== -->
+<div class="recall-section">
+  <div class="title">⚡ 三通道召回 · 多路并行检索</div>
+
+  <!-- Converge lines: from top single point to three channels -->
+  <div class="converge-top">
+    <svg viewBox="0 0 600 36" preserveAspectRatio="none">
+      <!-- Center top point at (300, 0) -->
+      <!-- Left channel at (120, 36) -->
+      <path d="M300,0 L120,36" stroke="#4a9fff" stroke-width="2.5" fill="none"/>
+      <!-- Middle channel at (300, 36) -->
+      <path d="M300,0 L300,36" stroke="#4a9fff" stroke-width="2.5" fill="none"/>
+      <!-- Right channel at (480, 36) -->
+      <path d="M300,0 L480,36" stroke="#4a9fff" stroke-width="2.5" fill="none"/>
+      <!-- Arrow heads -->
+      <path d="M115,30 L120,36 L125,30" stroke="#4a9fff" stroke-width="2.5" fill="none"/>
+      <path d="M295,30 L300,36 L305,30" stroke="#4a9fff" stroke-width="2.5" fill="none"/>
+      <path d="M475,30 L480,36 L485,30" stroke="#4a9fff" stroke-width="2.5" fill="none"/>
+    </svg>
+  </div>
+
+  <!-- Three parallel channels -->
+  <div class="recall-channels">
+    <div class="recall-channel">
+      <div class="ch-num">①</div>
+      <div class="ch-name">元数据相似度召回</div>
+      <div class="ch-desc">Skill 元信息相似度召回<br>按名称、标签、能力方向匹配</div>
+    </div>
+    <div class="recall-channel">
+      <div class="ch-num">②</div>
+      <div class="ch-name">SKILL.md 内容召回</div>
+      <div class="ch-desc">SKILL.md / description<br>内容相似度召回</div>
+    </div>
+    <div class="recall-channel">
+      <div class="ch-num">③</div>
+      <div class="ch-name">真实评价相似度召回</div>
+      <div class="ch-desc">Feedback 真实反馈<br>相似度召回</div>
+    </div>
+  </div>
+
+  <!-- Converge lines: from three channels to bottom single point -->
+  <div class="converge-bottom">
+    <svg viewBox="0 0 600 36" preserveAspectRatio="none">
+      <!-- Left channel at (120, 0) → center (300, 36) -->
+      <path d="M120,0 L300,36" stroke="#4a9fff" stroke-width="2.5" fill="none"/>
+      <!-- Middle channel at (300, 0) → center (300, 36) -->
+      <path d="M300,0 L300,36" stroke="#4a9fff" stroke-width="2.5" fill="none"/>
+      <!-- Right channel at (480, 0) → center (300, 36) -->
+      <path d="M480,0 L300,36" stroke="#4a9fff" stroke-width="2.5" fill="none"/>
+      <!-- Arrow head at bottom center -->
+      <path d="M295,30 L300,36 L305,30" stroke="#4a9fff" stroke-width="2.5" fill="none"/>
+    </svg>
+  </div>
+</div>
+
+<!-- Connector to Layer 2 -->
+<div class="connector compact-connector"></div>
+
+<!-- ===== Layer 2 ===== -->
+<div class="layer-card">
+  <div class="num">2</div>
+  <div class="body">
+    <div class="name">能力与方向匹配 <span class="en">Capability & Direction Matching</span></div>
+    <div class="desc">优先分析结构化能力，区分"A → B"和"B → A"，避免因关键词相似而错误命中</div>
+  </div>
+  <div class="tag">方向校验</div>
+</div>
+
+<div class="connector compact-connector"></div>
+
+<!-- ===== Layer 3 ===== -->
+<div class="layer-card">
+  <div class="num">3</div>
+  <div class="body">
+    <div class="name">执行条件判断 <span class="en">Execution-condition Check</span></div>
+    <div class="desc">检查 Skill 是否依赖额外凭证、复杂配置或特定运行环境，评估能否覆盖完整任务</div>
+  </div>
+  <div class="tag">可行性</div>
+</div>
+
+<div class="connector compact-connector"></div>
+
+<!-- ===== Layer 4 ===== -->
+<div class="layer-card">
+  <div class="num">4</div>
+  <div class="body">
+    <div class="name">根本冲突过滤 <span class="en">Fundamental-conflict Filtering</span></div>
+    <div class="desc">移除能力方向、使用条件或任务目标存在明显冲突的候选项</div>
+  </div>
+  <div class="tag">冲突剔除</div>
+</div>
+
+<div class="connector compact-connector"></div>
+
+<!-- ===== Merge / Coarse Ranking ===== -->
+<div class="merge-box">候选结果合并 · 去重 · 粗排</div>
+
+<div class="connector"></div>
+
+<!-- ===== Stage 2 Banner ===== -->
+<div class="stage-banner stage2">
+  <div class="line"></div>
+  <div class="label">第二阶段：真实评价排序</div>
+  <div class="line"></div>
+</div>
+
+<!-- ===== Layer 5 ===== -->
+<div class="layer-card s2">
+  <div class="num">5</div>
+  <div class="body">
+    <div class="name">相似场景优先 <span class="en">Similar-scenario Priority</span></div>
+    <div class="desc">对比评价中的 usageScenario，任务目标、Agent 类型和环境越接近，参考价值越高</div>
+  </div>
+  <div class="tag">场景匹配</div>
+</div>
+
+<div class="connector compact-connector"></div>
+
+<!-- ===== Layer 6 ===== -->
+<div class="layer-card s2">
+  <div class="num">6</div>
+  <div class="body">
+    <div class="name">真实执行结果 <span class="en">Real Execution Results</span></div>
+    <div class="desc">分析 skillPerformance，判断 Skill 是否真正跑通、完成哪些步骤、是否通过测试与构建验证</div>
+  </div>
+  <div class="tag">执行验证</div>
+</div>
+
+<div class="connector compact-connector"></div>
+
+<!-- ===== Layer 7 ===== -->
+<div class="layer-card s2">
+  <div class="num">7</div>
+  <div class="body">
+    <div class="name">结果质量与用户感受 <span class="en">Output Quality & Sentiment</span></div>
+    <div class="desc">结合 userFeedback，判断输出是否满足质量、风格和业务要求，而不只是"成功执行"</div>
+  </div>
+  <div class="tag">质量评估</div>
+</div>
+
+<div class="connector compact-connector"></div>
+
+<!-- ===== Layer 8 ===== -->
+<div class="layer-card s2">
+  <div class="num">8</div>
+  <div class="body">
+    <div class="name">风险、限制与使用成本 <span class="en">Risk, Limits & Cost</span></div>
+    <div class="desc">识别接口失效、异常、超时、额外依赖、能力边界、执行耗时和 Token 消耗，高风险候选项降权</div>
+  </div>
+  <div class="tag">风险降权</div>
+</div>
+
+<div class="connector"></div>
+
+<!-- ===== Output ===== -->
+<div class="output-box">
+  <div class="title">🎯 TOP 5 推荐 + 推荐理由 + 场景证据 + 风险提示</div>
+  <div class="items">用户确认 → 安装 → 实际执行 → 用户主动评价 → 脱敏处理</div>
+</div>
+
+<!-- ===== Feedback Loop ===== -->
+<div class="feedback-loop">
+  <span class="arrow">↻</span> 真实评价回流：新评价证据 → <span class="arrow">①</span> Feedback 相似度召回 &nbsp;|&nbsp; <span class="arrow">②</span> Rerank 评价甄别 &nbsp;→&nbsp; 形成完整推荐闭环
+</div>
+
+<!-- ===== Footer ===== -->
+<div class="footer">
+  数据来源：github.com/wheelry/deep-skill-finder · 层名与说明以项目 README 为准
+</div>
+
+</body>
+</html>

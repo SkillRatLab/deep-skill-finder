@@ -124,62 +124,7 @@ deep-skill-finder's recommendation is not a single keyword ranking — it runs i
 > 1. **Professional retrieval**: understand the task the user actually wants done, and find capability-relevant, direction-correct, execution-ready candidates from across the web.
 > 2. **Real-review ranking**: put candidates back into concrete usage scenarios, and combine real users' execution process, results, and reviews to judge which Skill fits the current task best.
 
-```
-User describes the task in natural language
-              │
-              ▼
-    Task understanding & query rewrite
- (goal · I/O · direction · constraints · environment)
-              │
-              ▼
-┌──────────────────────────────────────────┐
-│  Professional retrieval (coarse):        │
-│           multi-channel recall           │
-│                                          │
-│  ① Skill metadata similarity recall      │
-│  ② SKILL.md / description content recall │
-│  ③ Feedback real-review similarity recall│
-└──────────────┬───────────────────────────┘
-               │
-               ▼
-      Merge · dedupe · coarse ranking
-               │
-               ▼
-┌──────────────────────────────────────────┐
-│     Fine rank: Rerank + review check     │
-│                                          │
-│  Task match: capability · direction ·    │
-│               completeness               │
-│  Execution: environment · dependencies · │
-│              feasibility                 │
-│                                          │
-│  Real-review verification:               │
-│    usageScenario   similar context       │
-│    skillPerformance process & results    │
-│    userFeedback    rating & sentiment    │
-│                                          │
-│  Synthesize success, failure, quality,   │
-│  risk & cost                             │
-└──────────────┬───────────────────────────┘
-               │
-               ▼
-  TOP 5 + reasons + scenario evidence + risks
-               │
-               ▼
-      User confirms → install → execute
-                         │
-                         ▼
-           User voluntarily leaves a review
-                         │
-                         ▼
-                     Redaction
-                         │
-                         ▼
-             New real-review evidence
-                         │
-                         ├────→ Feedback similarity recall
-                         └────→ Rerank review verification
-```
+![deep-skill-finder 8-layer ranking system](assets/en/deep-skill-finder-ranking-engine.png)
 
 ### Stage 1: find relevant candidates through professional retrieval
 
